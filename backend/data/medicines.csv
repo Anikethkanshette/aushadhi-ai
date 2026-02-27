@@ -1,0 +1,31 @@
+id,name,generic_name,category,stock_quantity,unit,price,prescription_required,min_stock_level,supplier
+M001,Paracetamol 500mg,Paracetamol,Analgesic,500,strip,25,false,50,MedSupply Co
+M002,Amoxicillin 500mg,Amoxicillin,Antibiotic,200,strip,85,true,30,PharmaCorp
+M003,Omeprazole 20mg,Omeprazole,Antacid,300,strip,45,false,40,MedSupply Co
+M004,Metformin 500mg,Metformin,Antidiabetic,150,strip,30,true,25,DiaCare
+M005,Atorvastatin 10mg,Atorvastatin,Statin,180,strip,75,true,30,CardioMeds
+M006,Amlodipine 5mg,Amlodipine,Antihypertensive,220,strip,60,true,35,CardioMeds
+M007,Cetirizine 10mg,Cetirizine,Antihistamine,400,strip,20,false,60,AllerCare
+M008,Aspirin 75mg,Aspirin,Antiplatelet,350,strip,15,false,50,MedSupply Co
+M009,Ibuprofen 400mg,Ibuprofen,NSAID,280,strip,35,false,45,MedSupply Co
+M010,Pantoprazole 40mg,Pantoprazole,PPI,160,strip,55,true,25,GastroMeds
+M011,Vitamin D3 1000IU,Cholecalciferol,Supplement,600,strip,120,false,80,NutriCare
+M012,Vitamin B12 500mcg,Cyanocobalamin,Supplement,450,strip,90,false,70,NutriCare
+M013,Azithromycin 500mg,Azithromycin,Antibiotic,120,strip,110,true,20,PharmaCorp
+M014,Ciprofloxacin 500mg,Ciprofloxacin,Antibiotic,140,strip,95,true,20,PharmaCorp
+M015,Lisinopril 10mg,Lisinopril,ACE Inhibitor,130,strip,70,true,25,CardioMeds
+M016,Losartan 50mg,Losartan,ARB,170,strip,80,true,30,CardioMeds
+M017,Glimepiride 2mg,Glimepiride,Antidiabetic,90,strip,65,true,15,DiaCare
+M018,Levothyroxine 50mcg,Levothyroxine,Thyroid,80,strip,50,true,15,ThyroCare
+M019,Montelukast 10mg,Montelukast,Antiasthmatic,200,strip,85,true,30,AllerCare
+M020,Dolo 650mg,Paracetamol,Analgesic,800,strip,30,false,100,MedSupply Co
+M021,Combiflam,Ibuprofen+Paracetamol,Analgesic,320,strip,40,false,50,MedSupply Co
+M022,Allegra 120mg,Fexofenadine,Antihistamine,250,strip,75,false,40,AllerCare
+M023,Telmisartan 40mg,Telmisartan,ARB,160,strip,90,true,25,CardioMeds
+M024,Esomeprazole 40mg,Esomeprazole,PPI,140,strip,65,true,25,GastroMeds
+M025,Rosuvastatin 10mg,Rosuvastatin,Statin,120,strip,95,true,20,CardioMeds
+M026,Clopidogrel 75mg,Clopidogrel,Antiplatelet,100,strip,85,true,20,CardioMeds
+M027,Spironolactone 25mg,Spironolactone,Diuretic,80,strip,70,true,15,CardioMeds
+M028,Furosemide 40mg,Furosemide,Diuretic,110,strip,30,true,20,CardioMeds
+M029,Alprazolam 0.25mg,Alprazolam,Anxiolytic,60,strip,45,true,10,NeuroCare
+M030,Pantop DSR,Pantoprazole+Domperidone,PPI Combo,180,strip,75,true,30,GastroMeds

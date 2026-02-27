@@ -1,0 +1,31 @@
+order_id,patient_id,patient_name,abha_id,medicine_id,medicine_name,quantity,dosage_frequency,purchase_date,next_refill_date,total_amount,status
+ORD001,P001,Rajesh Kumar,1234-5678-9012,M001,Paracetamol 500mg,2,Twice daily,2024-01-15,2024-02-14,50,completed
+ORD002,P001,Rajesh Kumar,1234-5678-9012,M004,Metformin 500mg,3,Twice daily,2024-01-15,2024-02-14,90,completed
+ORD003,P001,Rajesh Kumar,1234-5678-9012,M005,Atorvastatin 10mg,1,Once daily,2024-01-15,2024-02-14,75,completed
+ORD004,P001,Rajesh Kumar,1234-5678-9012,M006,Amlodipine 5mg,2,Once daily,2024-02-10,2024-03-11,120,completed
+ORD005,P001,Rajesh Kumar,1234-5678-9012,M004,Metformin 500mg,3,Twice daily,2024-02-10,2024-03-11,90,completed
+ORD006,P002,Priya Sharma,2345-6789-0123,M007,Cetirizine 10mg,1,Once daily,2024-01-20,2024-02-19,20,completed
+ORD007,P002,Priya Sharma,2345-6789-0123,M011,Vitamin D3 1000IU,2,Once daily,2024-01-20,2024-02-19,240,completed
+ORD008,P002,Priya Sharma,2345-6789-0123,M019,Montelukast 10mg,2,Once daily,2024-02-05,2024-03-06,170,completed
+ORD009,P003,Amit Patel,3456-7890-1234,M008,Aspirin 75mg,2,Once daily,2024-01-10,2024-02-09,30,completed
+ORD010,P003,Amit Patel,3456-7890-1234,M015,Lisinopril 10mg,3,Once daily,2024-01-10,2024-02-09,210,completed
+ORD011,P003,Amit Patel,3456-7890-1234,M025,Rosuvastatin 10mg,1,Once daily,2024-01-10,2024-02-09,95,completed
+ORD012,P003,Amit Patel,3456-7890-1234,M026,Clopidogrel 75mg,2,Once daily,2024-02-08,2024-03-09,170,completed
+ORD013,P004,Sunita Devi,4567-8901-2345,M018,Levothyroxine 50mcg,3,Once daily,2024-01-25,2024-02-24,150,completed
+ORD014,P004,Sunita Devi,4567-8901-2345,M012,Vitamin B12 500mcg,1,Once daily,2024-01-25,2024-02-24,90,completed
+ORD015,P004,Sunita Devi,4567-8901-2345,M003,Omeprazole 20mg,2,Once daily,2024-02-15,2024-03-16,90,completed
+ORD016,P005,Mohammed Khalil,5678-9012-3456,M002,Amoxicillin 500mg,1,Three times daily,2024-01-30,2024-02-13,85,completed
+ORD017,P005,Mohammed Khalil,5678-9012-3456,M010,Pantoprazole 40mg,2,Once daily,2024-01-30,2024-03-01,110,completed
+ORD018,P005,Mohammed Khalil,5678-9012-3456,M009,Ibuprofen 400mg,1,Twice daily,2024-02-20,2024-03-21,35,completed
+ORD019,P006,Lakshmi Nair,6789-0123-4567,M023,Telmisartan 40mg,3,Once daily,2024-01-12,2024-02-11,270,completed
+ORD020,P006,Lakshmi Nair,6789-0123-4567,M027,Spironolactone 25mg,2,Once daily,2024-01-12,2024-02-11,140,completed
+ORD021,P006,Lakshmi Nair,6789-0123-4567,M023,Telmisartan 40mg,3,Once daily,2024-02-10,2024-03-11,270,completed
+ORD022,P007,Vikram Singh,7890-1234-5678,M017,Glimepiride 2mg,2,Once daily,2024-01-18,2024-02-17,130,completed
+ORD023,P007,Vikram Singh,7890-1234-5678,M004,Metformin 500mg,3,Twice daily,2024-01-18,2024-02-17,90,completed
+ORD024,P007,Vikram Singh,7890-1234-5678,M016,Losartan 50mg,2,Once daily,2024-02-12,2024-03-13,160,completed
+ORD025,P008,Anita Reddy,8901-2345-6789,M022,Allegra 120mg,2,Once daily,2024-01-22,2024-02-21,150,completed
+ORD026,P008,Anita Reddy,8901-2345-6789,M020,Dolo 650mg,3,As needed,2024-02-01,2024-03-03,90,completed
+ORD027,P009,Ravi Gupta,9012-3456-7890,M024,Esomeprazole 40mg,2,Once daily,2024-01-28,2024-02-27,130,completed
+ORD028,P009,Ravi Gupta,9012-3456-7890,M021,Combiflam,2,As needed,2024-02-18,2024-03-20,80,completed
+ORD029,P010,Meena Krishnan,0123-4567-8901,M029,Alprazolam 0.25mg,1,Once daily,2024-01-05,2024-02-04,45,completed
+ORD030,P010,Meena Krishnan,0123-4567-8901,M030,Pantop DSR,2,Once daily,2024-01-05,2024-02-04,150,completed
