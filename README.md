@@ -4,7 +4,7 @@
 
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React+Vite-61DAFB)](https://react.dev)
-[![LangChain](https://img.shields.io/badge/AI-LangChain+Gemini-FF6B35)](https://python.langchain.com)
+[![Gemini](https://img.shields.io/badge/AI-Google_Gemini-FF6B35)](https://aistudio.google.com/)
 [![Langfuse](https://img.shields.io/badge/Observability-Langfuse-purple)](https://langfuse.com)
 
 ---
@@ -14,15 +14,18 @@
 | Feature | Description |
 |---|---|
 | 🆔 ABHA Login | Simulated ABDM-compatible identity (12-digit ABHA ID) |
+| 👨‍⚕️ Pharmacist Portal | Admin dashboard with secure login, inventory management, and real-time order fulfilling |
 | 🎙️ Voice Chat | Web Speech API – speak in English or Hindi |
 | 🔊 Text-to-Speech | AI responds in voice using Speech Synthesis |
-| 🤖 AI Agent | LangChain + Gemini with 5 pharmacy tools |
+| 🤖 Agentic Router | Main AI routes queries to specialized `PolicyAgent` or `PharmacyAgent` |
+| 📢 Notification Agent | AI automatically drafts context-aware WhatsApp/SMS/Email copy upon order fulfillment |
+| 🔔 In-App Alerts | Real-time notification bell in Patient Dashboard |
 | 💊 Medicine Search | 49 real pharmaceutical products with stock, pricing & Rx flags |
 | 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
 | 🛒 Order Flow | Simulated orders with payment + notifications |
 | 📊 Welfare Eligibility | PMJAY scheme detection and discounts |
 | 🔁 Refill Reminders | Predictive refill alerts from real consumer order history |
-| 📈 Langfuse Tracing | Agent execution observability |
+| 📈 Langfuse Tracing | End-to-end agent observability (spans and traces) |
 | 💾 IndexedDB | Offline-first data storage with Dexie |
 
 ---
@@ -33,11 +36,15 @@
 Frontend (React + Vite + TailwindCSS)
    ↕ REST API (axios)
 Backend (FastAPI, Python)
-   ↕ LangChain Agent Calls
-AI Agent Layer (Google Gemini + LangChain)
+   ↕ Agent Router
+AI Agent Layer (Google Gemini Native Function Calling)
+   ├── PharmacyAgent (Medicines, Tools, Inventory)
+   ├── PolicyAgent (Regulation, Returns, Rules)
+   └── NotificationAgent (WhatsApp/SMS Copy Generation)
    ↕ Tracing
 Langfuse (Observability)
-   ↕ Local IndexedDB (Dexie)
+   ↕ Local Storage
+Local IndexedDB (Dexie) & local JSON files
 ```
 
 ---
@@ -107,6 +114,11 @@ App → **http://localhost:5173**
 | `2008-0008-0008` | Sunita Mehta | Minoxidil (dermatology) |
 | `2020-0020-0020` | Vikram Singh | COLPOFIX history |
 
+### Pharmacist Portal Credentials
+- **URL**: `http://localhost:5173/pharmacist/login`
+- **Username**: `admin`
+- **Password**: `admin`
+
 ---
 
 ## API Reference
@@ -120,7 +132,12 @@ App → **http://localhost:5173**
 | `GET` | `/orders/?abha_id=...` | Patient order history |
 | `POST` | `/patients/login` | ABHA login |
 | `GET` | `/patients/refill-alerts` | Upcoming refill alerts |
+| `GET` | `/patients/{abha}/notifications` | Fetch unread in-app alerts |
 | `GET` | `/agent/welfare/{abha_id}` | PMJAY eligibility check |
+| `POST` | `/pharmacist/login` | Secure pharmacist auth |
+| `GET` | `/pharmacist/stats` | Order and revenue totals |
+| `PUT` | `/pharmacist/orders/{id}/status` | Fulfill orders -> triggers Notification Agent |
+| `GET` | `/pharmacist/inventory` | Real-time stock levels |
 
 ---
 
@@ -142,24 +159,28 @@ App → **http://localhost:5173**
 aushadhi-ai/
 ├── backend/
 │   ├── agents/
-│   │   ├── pharmacy_agent.py    # LangChain + Gemini + Langfuse
-│   │   └── predictive_agent.py  # Refill prediction from history
+│   │   ├── pharmacy_agent.py      # Main router + Google GenAI tools
+│   │   ├── policy_agent.py        # Rules & Regulations solver
+│   │   ├── notification_agent.py  # Automated comms generator
+│   │   └── predictive_agent.py    # Refill prediction from history
 │   ├── routes/
 │   │   ├── medicines.py / orders.py / patients.py
-│   │   ├── agent.py / webhooks.py
+│   │   ├── agent.py / webhooks.py / pharmacist.py
 │   ├── data/
 │   │   ├── medicines.csv        # 49 real pharmaceutical products
-│   │   └── order_history.csv    # Real consumer order history
+│   │   ├── order_history.csv    # Real consumer order history
+│   │   └── notifications.json   # Persistent in-app alerts
 │   ├── main.py / models.py / database.py
 │   └── requirements.txt
 ├── frontend/src/
 │   ├── pages/
 │   │   ├── AbhaLogin.jsx        # ABHA ID login
-│   │   ├── Dashboard.jsx        # Responsive shell + sidebar
+│   │   ├── Dashboard.jsx        # Responsive shell + Patient bell
 │   │   ├── DashboardHome.jsx    # Stats, welfare, refill alerts
 │   │   ├── ChatPage.jsx         # Voice + text AI chat
 │   │   ├── MedicineSearch.jsx   # Product search + order flow
-│   │   └── OrderHistory.jsx     # Order history + total spend
+│   │   ├── OrderHistory.jsx     # Order history + total spend
+│   │   └── pharmacist/          # Admin Dashboard, Queue, Inventory
 │   ├── App.jsx / db.js / index.css
 ├── .env.example
 └── README.md
@@ -172,10 +193,10 @@ aushadhi-ai/
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite, TailwindCSS |
-| Local DB | Dexie (IndexedDB) |
+| Local DB | Dexie (IndexedDB), Local JSON |
 | Backend | FastAPI, Python 3.11+ |
-| AI Agent | LangChain, Google Gemini 1.5 Flash |
-| Observability | Langfuse |
+| AI Agent | Google Gemini Native Function Calling (`google-genai`) |
+| Observability | Langfuse (Python SDK) |
 | Voice | Web Speech API + Speech Synthesis API |
 
 ---
