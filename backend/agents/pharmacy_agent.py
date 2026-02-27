@@ -28,41 +28,59 @@ except ImportError:
 
 from database import search_medicines, get_medicine_by_id, get_patient_orders, load_medicines
 from agents.policy_agent import PolicyAgent
+from agents.stock_agent import StockCheckAgent
+from agents.prescription_agent import PrescriptionAgent
+from agents.payment_agent import PaymentAgent
+from agents.delivery_agent import DeliveryAgent
+from agents.welfare_agent import WelfareAgent
 
 
-# ── Tool implementations ──────────────────────────────────────────────────────
+# ── Sub-Agents Instances ──────────────────────────────────────────────────────
+stock_agent = StockCheckAgent()
+rx_agent = PrescriptionAgent()
+payment_agent = PaymentAgent()
+delivery_agent = DeliveryAgent()
+welfare_agent = WelfareAgent()
+
+# ── Tool implementations (Delegates to Sub-Agents) ────────────────────────────
 
 def _search_medicine(query: str) -> str:
-    results = search_medicines(query)
-    if not results:
-        return f"No medicines found for '{query}'."
+    res = stock_agent.check_inventory(query)
+    if res["status"] == "error":
+        return res["message"]
+    
     lines = []
-    for med in results[:5]:
-        status = "In Stock" if int(med["stock_quantity"]) > 0 else "Out of Stock"
+    for med in res["matches"]:
+        status = "In Stock" if med["in_stock"] else "Out of Stock"
         rx = "Prescription Required" if med["prescription_required"] else "OTC"
-        lines.append(f"- {med['name']} | ₹{med['price']} | {status} ({med['stock_quantity']} units) | {rx}")
+        lines.append(f"- {med['name']} | ₹{med['price']} | {status} ({med['quantity_available']} units) | {rx}")
     return "\n".join(lines)
 
 
 def _check_stock(medicine_id: str) -> str:
-    med = get_medicine_by_id(medicine_id)
-    if not med:
-        return f"Medicine ID '{medicine_id}' not found."
-    qty = int(med["stock_quantity"])
-    if qty == 0:
-        return f"{med['name']} is OUT OF STOCK."
-    if qty < int(med["min_stock_level"]):
-        return f"{med['name']} is LOW STOCK: {qty} units at ₹{med['price']}."
-    return f"{med['name']}: {qty} units available at ₹{med['price']} per {med['unit']}."
+    res = stock_agent.check_specific_item(medicine_id)
+    if res["status"] == "error":
+        return res["message"]
+    
+    if not res["in_stock"]:
+        return f"{res['medicine']} is OUT OF STOCK."
+    
+    qty = res["quantity_available"]
+    if qty < res["min_stock"]:
+        return f"{res['medicine']} is LOW STOCK: {qty} units at ₹{res['price']}."
+    return f"{res['medicine']}: {qty} units available at ₹{res['price']}."
 
 
-def _check_prescription(medicine_id: str) -> str:
-    med = get_medicine_by_id(medicine_id)
-    if not med:
-        return f"Medicine '{medicine_id}' not found."
-    if med["prescription_required"]:
-        return f"PRESCRIPTION REQUIRED: {med['name']} is a regulated drug. Please upload a valid prescription."
-    return f"NO PRESCRIPTION NEEDED: {med['name']} is available OTC."
+def _check_prescription(medicine_id: str, abha_id: str = "anonymous", has_rx: bool = False) -> str:
+    res = rx_agent.validate_prescription(medicine_id, has_rx, abha_id)
+    if res["status"] == "error":
+        return res["message"]
+    if res["status"] == "rejected":
+        return res["message"]
+    
+    if res["requires_rx"]:
+        return f"PRESCRIPTION VALIDATED: {res['medicine_name']} approved for dispensing."
+    return f"NO PRESCRIPTION NEEDED: {res['medicine_name']} is available OTC."
 
 
 def _get_patient_history(patient_id: str) -> str:
@@ -90,6 +108,18 @@ def _suggest_alternatives(medicine_name: str) -> str:
     return "\n".join(lines)
 
 
+def _estimate_delivery(zip_code: str) -> str:
+    res = delivery_agent.schedule_delivery("ESTIMATE", zip_code)
+    if res["status"] == "error":
+        return res["message"]
+    return f"{res['message']} (Courier: {res['courier']})"
+
+def _check_welfare(abha_id: str, amount: float) -> str:
+    res = welfare_agent.check_eligibility(abha_id, amount)
+    if res["is_eligible"]:
+        return f"Eligible for 20% discount (saves ₹{res['discount_amount']}). Final cart: ₹{res['final_amount']}."
+    return "Not eligible for automatic welfare discounts."
+
 # Dispatch table
 TOOL_FN = {
     "search_medicine": _search_medicine,
@@ -97,6 +127,8 @@ TOOL_FN = {
     "check_prescription": _check_prescription,
     "get_patient_history": _get_patient_history,
     "suggest_alternatives": _suggest_alternatives,
+    "estimate_delivery": _estimate_delivery,
+    "check_welfare": _check_welfare,
 }
 
 # Gemini tool declarations
@@ -147,17 +179,38 @@ GEMINI_TOOLS = [
                 required=["medicine_name"],
             ),
         ),
+        genai_types.FunctionDeclaration(
+            name="estimate_delivery",
+            description="Estimate delivery dates using DeliveryAgent. Use this when the user asks when their order will arrive.",
+            parameters=genai_types.Schema(
+                type=genai_types.Type.OBJECT,
+                properties={"zip_code": genai_types.Schema(type=genai_types.Type.STRING, description="Delivery Zip Code")},
+                required=["zip_code"],
+            ),
+        ),
+        genai_types.FunctionDeclaration(
+            name="check_welfare",
+            description="Check PMJAY welfare eligibility using WelfareAgent.",
+            parameters=genai_types.Schema(
+                type=genai_types.Type.OBJECT,
+                properties={
+                    "abha_id": genai_types.Schema(type=genai_types.Type.STRING, description="Patient ABHA ID"),
+                    "amount": genai_types.Schema(type=genai_types.Type.NUMBER, description="Order amount")
+                },
+                required=["abha_id", "amount"],
+            ),
+        ),
     ]) if GEMINI_AVAILABLE else None
 ]
 
-SYSTEM_PROMPT = """You are AushadhiAI, an expert AI pharmacist for patients. Help with:
-- Finding medicines and checking availability
-- Prescription requirement checks
-- Suggesting affordable generic alternatives
-- Medication history review
+SYSTEM_PROMPT = """You are AushadhiAI's central ConversationAgent (Orchestrator). 
+You delegate tasks to specialized sub-agents: 
+- Use StockCheckAgent tools for inventory.
+- Use PrescriptionAgent tools for Rx checks.
+- Use DeliveryAgent for shipping estimates.
+- Use WelfareAgent for PMJAY checks.
 Always be friendly and professional. If a medicine is prescription-only, ask for Rx before proceeding.
 Respond concisely. Use ₹ for Indian Rupee prices."""
-
 
 class PharmacyAgent:
     def __init__(self):

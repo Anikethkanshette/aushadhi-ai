@@ -50,8 +50,23 @@ def save_order(order: Dict) -> None:
 
     filepath = os.path.join(DATA_DIR, "order_history.csv")
     if orders:
+        # Accumulate all possible keys deterministically
+        fields_set = set()
+        fieldnames = []
+        for o in orders:
+            for k in o.keys():
+                if k not in fields_set:
+                    fields_set.add(k)
+                    fieldnames.append(k)
+        
+        # In case the new order has keys order doesn't have yet, add them explicitly
+        for k in order.keys():
+            if k not in fields_set:
+                fields_set.add(k)
+                fieldnames.append(k)
+
         with open(filepath, "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=orders[0].keys())
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
             writer.writeheader()
             writer.writerows(orders)
 

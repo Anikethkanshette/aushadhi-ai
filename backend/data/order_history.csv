@@ -1,16 +1,19 @@
-order_id,patient_id,patient_name,abha_id,medicine_id,medicine_name,quantity,dosage_frequency,purchase_date,next_refill_date,total_amount,status
-ORD001,PAT004,Rajesh Kumar,2004-0004-0004,1118582,Mucosolvan 1 mal taglich Retardkapseln,1,Once daily,2024-03-13,2024-04-12,39.97,fulfilled
-ORD002,PAT006,Amit Patel,2006-0006-0006,202006,Ramipril 1A Pharma 10mg Tabletten,2,Once daily,2024-03-09,2024-04-08,25.18,completed
-ORD003,PAT008,Sunita Mehta,2008-0008-0008,772646,Minoxidil BIO-H-TIN-Pharma 20mg/ml Spray,1,Twice daily,2024-03-08,2024-04-07,22.50,completed
-ORD004,PAT016,Meena Devi,2016-0016-0016,1428085,femiloges 4mg magensaftresistente Tabletten,1,Once daily,2024-02-24,2024-03-25,20.44,completed
-ORD005,PAT020,Vikram Singh,2020-0020-0020,1358905,COLPOFIX,1,As needed,2024-02-19,2024-03-20,49.60,completed
-ORD006,PAT002,Priya Sharma,2002-0002-0002,202796,Aqualibra 80mg/90mg/180mg Filmtabletten,1,Twice daily,2024-02-01,2024-03-02,27.82,completed
-ORD007,PAT034,Anita Rao,2034-0034-0034,70003,Livocab direkt Augentropfen 0.05% Suspension,1,Twice daily,2024-01-28,2024-02-27,14.99,completed
-ORD35298B,P002,Priya Sharma,2345-6789-0123,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORD9B4072,P002,Priya Sharma,2345-6789-0123,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORD869F5B,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORD533DED,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORDEC8FD4,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORDB0670C,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed
-ORD3477B2,P003,Amit Patel,3456-7890-1234,1225428,Vividrin iso EDO antiallergische Augentropfen,1,As directed,2026-02-28,2026-03-30,8.28,completed
-ORD79A4DA,P003,Amit Patel,3456-7890-1234,1231006,OMNI-BIOTIC SR-9 mit B-Vitaminen,1,As directed,2026-02-28,2026-03-30,44.5,completed
+order_id,patient_id,patient_name,abha_id,medicine_id,medicine_name,quantity,dosage_frequency,purchase_date,next_refill_date,total_amount,status,tx_id
+ORD001,PAT004,Rajesh Kumar,2004-0004-0004,1118582,Mucosolvan 1 mal taglich Retardkapseln,1,Once daily,2024-03-13,2024-04-12,39.97,fulfilled,
+ORD002,PAT006,Amit Patel,2006-0006-0006,202006,Ramipril 1A Pharma 10mg Tabletten,2,Once daily,2024-03-09,2024-04-08,25.18,completed,
+ORD003,PAT008,Sunita Mehta,2008-0008-0008,772646,Minoxidil BIO-H-TIN-Pharma 20mg/ml Spray,1,Twice daily,2024-03-08,2024-04-07,22.50,completed,
+ORD004,PAT016,Meena Devi,2016-0016-0016,1428085,femiloges 4mg magensaftresistente Tabletten,1,Once daily,2024-02-24,2024-03-25,20.44,completed,
+ORD005,PAT020,Vikram Singh,2020-0020-0020,1358905,COLPOFIX,1,As needed,2024-02-19,2024-03-20,49.60,completed,
+ORD006,PAT002,Priya Sharma,2002-0002-0002,202796,Aqualibra 80mg/90mg/180mg Filmtabletten,1,Twice daily,2024-02-01,2024-03-02,27.82,completed,
+ORD007,PAT034,Anita Rao,2034-0034-0034,70003,Livocab direkt Augentropfen 0.05% Suspension,1,Twice daily,2024-01-28,2024-02-27,14.99,completed,
+ORD35298B,P002,Priya Sharma,2345-6789-0123,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORD9B4072,P002,Priya Sharma,2345-6789-0123,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORD869F5B,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORD533DED,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORDEC8FD4,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORDB0670C,P003,Amit Patel,3456-7890-1234,1103035,Vitasprint Pro Energie,1,As directed,2026-02-28,2026-03-30,15.95,completed,
+ORD3477B2,P003,Amit Patel,3456-7890-1234,1225428,Vividrin iso EDO antiallergische Augentropfen,1,As directed,2026-02-28,2026-03-30,8.28,completed,
+ORD79A4DA,P003,Amit Patel,3456-7890-1234,1231006,OMNI-BIOTIC SR-9 mit B-Vitaminen,1,As directed,2026-02-28,2026-03-30,44.5,completed,
+ORDAF6281,PAT001,Rajesh Kumar,1234-5678-9012,1329121,Paracetamol apodiscounter 500mg Tabletten,1,1-0-0,2026-02-28,2026-03-30,2.06,completed,
+ORD13908A,PAT001,Rajesh Kumar,1234-5678-9012,1329121,Paracetamol apodiscounter 500mg Tabletten,1,1-0-0,2026-02-28,2026-03-30,2.06,completed,
+ORD828DCB,P001,Rajesh Kumar,1234-5678-9012,1329121,Paracetamol apodiscounter 500mg Tabletten,1,1-0-0,2026-02-28,2026-03-30,1.65,completed,TXN-48069117

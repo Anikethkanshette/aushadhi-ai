@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
-import { LogOut, LayoutDashboard, Package, ClipboardList, TrendingUp, AlertTriangle } from 'lucide-react'
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
+import { LogOut, LayoutDashboard, Package, ClipboardList, TrendingUp, AlertTriangle, ShieldAlert } from 'lucide-react'
 import axios from 'axios'
 import OrdersQueue from './OrdersQueue'
 import InventoryManager from './InventoryManager'
@@ -125,6 +125,3 @@ function DashboardOverview({ stats }) {
     )
 }
 
-// Needed imports for Dashboard components
-import { ShieldAlert } from 'lucide-react'
-import { Navigate } from 'react-router-dom'
