@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
-import { Activity, ShoppingBag, Bell, TrendingUp, AlertTriangle, Pill, ChevronRight } from 'lucide-react'
+import { Activity, ShoppingBag, Bell, TrendingUp, AlertTriangle, Pill, ChevronRight, Bot } from 'lucide-react'
 
 export default function DashboardHome({ patient, apiBase }) {
     const [stats, setStats] = useState({ orders: 0, medicines: 0, alerts: 0 })
     const [recentOrders, setRecentOrders] = useState([])
     const [refillAlerts, setRefillAlerts] = useState([])
     const [welfare, setWelfare] = useState(null)
+    const [insight, setInsight] = useState(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const [ordersRes, alertsRes, welfareRes] = await Promise.allSettled([
+                const [ordersRes, alertsRes, welfareRes, insightRes] = await Promise.allSettled([
                     axios.get(`${apiBase}/orders/?abha_id=${patient.abha_id}`),
                     axios.get(`${apiBase}/patients/refill-alerts`),
                     axios.get(`${apiBase}/agent/welfare/${patient.abha_id}`),
+                    axios.get(`${apiBase}/patients/${patient.abha_id}/insights`),
                 ])
                 if (ordersRes.status === 'fulfilled') {
                     const orders = ordersRes.value.data.orders || []
@@ -29,6 +31,9 @@ export default function DashboardHome({ patient, apiBase }) {
                 }
                 if (welfareRes.status === 'fulfilled') {
                     setWelfare(welfareRes.value.data)
+                }
+                if (insightRes.status === 'fulfilled') {
+                    setInsight(insightRes.value.data)
                 }
             } catch (e) {
                 console.log('Dashboard data load error', e)
@@ -54,6 +59,22 @@ export default function DashboardHome({ patient, apiBase }) {
                 </h1>
                 <p className="text-slate-400 text-sm mt-1">Here's your health dashboard overview.</p>
             </div>
+
+            {/* AI Insight Banner */}
+            {insight?.insight && (
+                <div className="glass-card p-5 border-indigo-500/40 bg-indigo-500/10 flex gap-4 animate-slide-up relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-3xl rounded-full translate-x-10 -translate-y-10 pointer-events-none"></div>
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20 z-10">
+                        <Bot className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1 z-10">
+                        <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                            AI Pharmacist Insight <span className="flex h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                        </h3>
+                        <p className="text-indigo-200 text-sm mt-1 leading-relaxed">{insight.insight}</p>
+                    </div>
+                </div>
+            )}
 
             {/* Welfare banner */}
             {welfare?.eligible && (

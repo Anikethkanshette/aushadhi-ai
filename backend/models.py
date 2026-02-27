@@ -138,3 +138,16 @@ class AgentNotificationResponse(BaseModel):
     email_subject: str
     email_body: str
     in_app: str
+
+
+class ScannedMedicine(BaseModel):
+    extracted_name: str
+    dosage: str = ""
+    quantity: int = 1
+    matched_medicine: Optional[Medicine] = None
+    available: bool = False
+
+
+class ScanPrescriptionResponse(BaseModel):
+    message: str
+    medicines: List[ScannedMedicine] = []

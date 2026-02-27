@@ -47,8 +47,8 @@ function ChatBubble({ msg }) {
                 {isBot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
             </div>
             <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${isBot
-                    ? 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-sm'
-                    : 'bg-indigo-600 text-white rounded-tr-sm'
+                ? 'bg-white/5 border border-white/10 text-slate-200 rounded-tl-sm'
+                : 'bg-indigo-600 text-white rounded-tr-sm'
                 }`}>
                 <p className="whitespace-pre-wrap">{msg.content}</p>
                 {msg.medicines?.length > 0 && (
@@ -147,12 +147,43 @@ export default function ChatPage({ patient, apiBase }) {
         sendMessage(text)
     })
 
-    const handlePrescriptionUpload = (e) => {
+    const handlePrescriptionUpload = async (e) => {
         const file = e.target.files[0]
         if (file) {
             setPrescriptionFile(file)
             setHasPrescription(true)
-            addMsg('assistant', `✅ Prescription uploaded: **${file.name}**. You can now order prescription medicines.`)
+
+            addMsg('user', `📄 Uploaded Prescription: ${file.name}`)
+            setLoading(true)
+
+            try {
+                const formData = new FormData()
+                formData.append('image', file)
+
+                const res = await axios.post(`${apiBase}/agent/scan-prescription`, formData)
+                const data = res.data
+
+                const medPayload = data.medicines.map(m => {
+                    if (m.matched_medicine) {
+                        return {
+                            ...m.matched_medicine,
+                            available: m.available
+                        }
+                    }
+                    return null
+                }).filter(Boolean)
+
+                addMsg('assistant', `✅ I've read your prescription. ${data.message} I found these matches in our inventory:`, {
+                    medicines: medPayload
+                })
+
+                if (ttsEnabled) speak("I have scanned your prescription. Here are the matching medicines.", lang)
+
+            } catch (err) {
+                addMsg('assistant', "⚠️ I couldn't process the prescription image. Please try a clearer photo.")
+            } finally {
+                setLoading(false)
+            }
         }
     }
 
@@ -264,8 +295,8 @@ export default function ChatPage({ patient, apiBase }) {
                         id="mic-btn"
                         onClick={() => listening ? stop() : start(lang)}
                         className={`p-3 rounded-xl transition-all ${listening
-                                ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/40 animate-pulse-slow'
-                                : 'bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white'
+                            ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/40 animate-pulse-slow'
+                            : 'bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white'
                             }`}
                         title={listening ? 'Stop recording' : 'Start voice input'}
                     >

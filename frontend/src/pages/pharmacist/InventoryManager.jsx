@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
-import { AlertTriangle, PackageSearch, Loader2 } from 'lucide-react'
+import { AlertTriangle, PackageSearch, Loader2, FileText, X } from 'lucide-react'
 
 export default function InventoryManager({ apiBase }) {
     const [medicines, setMedicines] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [showPOModal, setShowPOModal] = useState(false)
+    const [poDraft, setPoDraft] = useState('')
+    const [generating, setGenerating] = useState(false)
 
     useEffect(() => {
         const fetchMeds = async () => {
@@ -26,19 +29,45 @@ export default function InventoryManager({ apiBase }) {
         m.generic_name.toLowerCase().includes(search.toLowerCase())
     )
 
+    const handleGeneratePO = async () => {
+        setGenerating(true)
+        setShowPOModal(true)
+        try {
+            const res = await axios.post(`${apiBase}/pharmacist/generate-po`)
+            setPoDraft(res.data.po_draft)
+        } catch (e) {
+            setPoDraft("Error generating Purchase Order. Please try again.")
+        } finally {
+            setGenerating(false)
+        }
+    }
+
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-xl font-semibold text-white">Inventory Management</h3>
-                <div className="relative w-72">
-                    <PackageSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                    <input
-                        type="text"
-                        placeholder="Search medicines..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-teal-500 transition-colors"
-                    />
+            <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div>
+                    <h3 className="text-xl font-semibold text-white">Inventory Management</h3>
+                    <p className="text-sm text-gray-400 mt-1">Monitor stock and automate restocks</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={handleGeneratePO}
+                        disabled={generating}
+                        className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transition-all disabled:opacity-50"
+                    >
+                        {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        Generate Restock PO
+                    </button>
+                    <div className="relative w-64 block">
+                        <PackageSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search medicines..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500 transition-colors"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -87,6 +116,55 @@ export default function InventoryManager({ apiBase }) {
                     </tbody>
                 </table>
             </div>
+
+            {/* PO Modal */}
+            {showPOModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-[#15202b] border border-teal-500/20 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-teal-500/20 flex justify-between items-center bg-teal-500/5">
+                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-teal-400" />
+                                Smart Restock Purchase Order
+                            </h3>
+                            <button onClick={() => setShowPOModal(false)} className="p-2 -mr-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {generating ? (
+                                <div className="py-20 flex flex-col items-center justify-center text-teal-400">
+                                    <Loader2 className="w-10 h-10 animate-spin mb-4" />
+                                    <p className="animate-pulse">AI Agent analyzing inventory levels and drafting PO...</p>
+                                </div>
+                            ) : (
+                                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                    {poDraft}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 border-t border-teal-500/20 bg-black/20 flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowPOModal(false)}
+                                className="px-5 py-2.5 rounded-xl font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                disabled={generating || poDraft.includes('All inventory levels')}
+                                className="px-5 py-2.5 rounded-xl font-medium bg-teal-500 text-white shadow-lg shadow-teal-500/20 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 transition-colors flex items-center gap-2"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Send Order to Distributor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

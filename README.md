@@ -24,7 +24,9 @@
 | 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
 | 🛒 Order Flow | Simulated orders with payment + notifications |
 | 📊 Welfare Eligibility | PMJAY scheme detection and discounts |
-| 🔁 Refill Reminders | Predictive refill alerts from real consumer order history |
+| 🔁 Predictive Refill AI | Agentic AI calculates consumption from history to predict exactly when you will run out of chronic meds |
+| 📸 AI Prescription OCR | Gemini Vision automatically extracts handwritten medicines and dosages from uploaded Rx photos directly into your cart |
+| 📦 Smart Restock AI | Pharmacist AI automates inventory by analyzing low stock to draft customized Purchase Orders to distributors |
 | 📈 Langfuse Tracing | End-to-end agent observability (spans and traces) |
 | 💾 IndexedDB | Offline-first data storage with Dexie |
 
@@ -133,11 +135,14 @@ App → **http://localhost:5173**
 | `POST` | `/patients/login` | ABHA login |
 | `GET` | `/patients/refill-alerts` | Upcoming refill alerts |
 | `GET` | `/patients/{abha}/notifications` | Fetch unread in-app alerts |
+| `GET` | `/patients/{abha}/insights` | AI-generated Predictive Refill insights from order history |
 | `GET` | `/agent/welfare/{abha_id}` | PMJAY eligibility check |
+| `POST` | `/agent/scan-prescription` | Gemini Vision OCR to extract medicines from images |
 | `POST` | `/pharmacist/login` | Secure pharmacist auth |
 | `GET` | `/pharmacist/stats` | Order and revenue totals |
 | `PUT` | `/pharmacist/orders/{id}/status` | Fulfill orders -> triggers Notification Agent |
 | `GET` | `/pharmacist/inventory` | Real-time stock levels |
+| `POST` | `/pharmacist/generate-po` | AI drafts Purchase Order for low-stock inventory |
 
 ---
 

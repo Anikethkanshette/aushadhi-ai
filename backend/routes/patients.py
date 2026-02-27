@@ -2,6 +2,12 @@ from fastapi import APIRouter, HTTPException
 from database import get_patient_orders, get_patient_notifications
 from typing import Optional
 from datetime import date, datetime
+import os
+
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 router = APIRouter()
 
@@ -67,6 +73,60 @@ async def get_order_history(patient_id: str):
 async def get_order_history_by_abha(abha_id: str):
     orders = get_patient_orders(abha_id=abha_id)
     return {"abha_id": abha_id, "orders": orders, "total": len(orders)}
+
+
+@router.get("/{abha_id}/insights")
+async def get_patient_insights(abha_id: str):
+    orders = get_patient_orders(abha_id=abha_id)
+    if not orders:
+        return {"insight": None, "medicines": []}
+
+    today = date.today()
+    critical_orders = []
+    
+    seen = set()
+    for o in orders:
+        key = o["medicine_id"]
+        # Only take the most recent order for each medicine
+        if key in seen:
+            continue
+        seen.add(key)
+        
+        try:
+            next_refill = datetime.strptime(o["next_refill_date"], "%Y-%m-%d").date()
+            days_until = (next_refill - today).days
+            if 0 <= days_until <= 5:
+                critical_orders.append({
+                    "medicine": o["medicine_name"],
+                    "days": days_until
+                })
+        except Exception:
+            pass
+
+    if not critical_orders:
+        return {"insight": None, "medicines": []}
+
+    meds = [c["medicine"] for c in critical_orders]
+
+    if genai:
+        try:
+            client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            prompt = f"You are a friendly AI Pharmacist. The patient's following medicines need to be refilled soon: {critical_orders}. Write a personalized 1-sentence alert (max 15 words) urging them to re-order now to avoid missing a dose. Example: 'Your Metformin is running out in 3 days. Order now to stay healthy!'"
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            insight = response.text.replace('"', '').strip()
+            return {"insight": insight, "medicines": meds}
+        except Exception as e:
+            print("Gemini Insight Error:", e)
+
+    # Fallback insight
+    med_names = ", ".join(meds)
+    return {
+        "insight": f"⚠️ Friendly reminder: Your {med_names} supply is running low. Please refill soon!",
+        "medicines": meds
+    }
 
 
 @router.get("/refill-alerts")

@@ -64,5 +64,16 @@
     "tx_id": "TXN-2A6546F6",
     "event": "COMMIT",
     "timestamp": 1772227919.9514506
+  },
+  {
+    "tx_id": "TXN-40BB85C6",
+    "event": "BEGIN",
+    "action": "CREATE_ORDER",
+    "timestamp": 1772228898.0669196
+  },
+  {
+    "tx_id": "TXN-40BB85C6",
+    "event": "COMMIT",
+    "timestamp": 1772228898.5691698
   }
 ]

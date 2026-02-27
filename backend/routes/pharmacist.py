@@ -2,6 +2,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from models import PharmacistLogin
 from database import get_all_orders, load_medicines, update_order_status
 from agents.notification_agent import NotificationAgent
+from datetime import date
+import os
+
+try:
+    from google import genai
+except ImportError:
+    genai = None
 
 router = APIRouter(prefix="/pharmacist", tags=["Pharmacist"])
 notification_agent = NotificationAgent()
@@ -67,3 +74,50 @@ def update_status(order_id: str, status: str):
 def get_inventory():
     medicines = load_medicines()
     return {"medicines": medicines}
+
+
+@router.post("/generate-po")
+def generate_purchase_order():
+    medicines = load_medicines()
+    low_stock = [m for m in medicines if int(m["stock_quantity"]) < int(m["min_stock_level"])]
+    
+    if not low_stock:
+        return {"po_draft": "All inventory levels are optimal. No restock needed."}
+        
+    po_items = []
+    for m in low_stock:
+        suggested_order = int(m["min_stock_level"]) * 2 - int(m["stock_quantity"])
+        po_items.append(f"- {m['name']} (ID: {m['id']}), Current: {m['stock_quantity']}, Suggest Ordering: {suggested_order}")
+        
+    items_text = "\n".join(po_items)
+    
+    if genai:
+        try:
+            client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+            prompt = f"""
+            You are drafting a formal Purchase Order (PO) to a pharmaceutical distributor (PharmaCorp India).
+            Today's Date is {date.today()}.
+            
+            The pharmacy 'AushadhiAI Clinic' has the following low stock items that need immediate replenishment:
+            {items_text}
+            
+            Please write a professional, well-formatted Purchase Order email/document.
+            Include a table or list of the items, a request for delivery timelines, and standard PO formalities.
+            """
+            
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt
+            )
+            return {"po_draft": response.text}
+        except Exception as e:
+            print("Gemini PO Error:", e)
+
+    fallback_po = (
+        f"PURCHASE ORDER\n"
+        f"Date: {date.today()}\n"
+        f"To: PharmaCorp India\n\n"
+        f"Please supply the following items:\n{items_text}\n\n"
+        f"Requested Delivery: ASAP"
+    )
+    return {"po_draft": fallback_po}
