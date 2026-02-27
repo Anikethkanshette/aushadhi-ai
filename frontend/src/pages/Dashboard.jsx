@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import {
     MessageSquare, Search, ClipboardList, LayoutDashboard,
@@ -31,6 +31,8 @@ export default function Dashboard({ patient, onLogout, apiBase }) {
         const intervalId = setInterval(fetchNotifs, 10000)
         return () => clearInterval(intervalId)
     }, [patient, apiBase])
+
+    if (!patient) return null;
 
     const navItems = [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', end: true },
