@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import medicines, orders, patients, agent, webhooks
+from routes import medicines, orders, patients, agent, webhooks, pharmacist
 import uvicorn
 
 app = FastAPI(
@@ -22,6 +22,7 @@ app.include_router(orders.router, prefix="/orders", tags=["orders"])
 app.include_router(patients.router, prefix="/patients", tags=["patients"])
 app.include_router(agent.router, prefix="/agent", tags=["agent"])
 app.include_router(webhooks.router, prefix="/webhook", tags=["webhooks"])
+app.include_router(pharmacist.router)
 
 
 @app.get("/")

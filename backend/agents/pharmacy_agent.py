@@ -27,6 +27,7 @@ except ImportError:
     GEMINI_AVAILABLE = False
 
 from database import search_medicines, get_medicine_by_id, get_patient_orders, load_medicines
+from agents.policy_agent import PolicyAgent
 
 
 # ── Tool implementations ──────────────────────────────────────────────────────
@@ -161,6 +162,7 @@ Respond concisely. Use ₹ for Indian Rupee prices."""
 class PharmacyAgent:
     def __init__(self):
         self._client = None
+        self._policy_agent = PolicyAgent()
 
     def _get_client(self):
         if self._client is None and GEMINI_AVAILABLE:
@@ -183,7 +185,9 @@ class PharmacyAgent:
 
         # Detect intent
         msg_lower = message.lower()
-        if any(k in msg_lower for k in ["buy", "order", "need", "want", "get", "purchase"]):
+        if any(k in msg_lower for k in ["policy", "return", "refund", "legal", "limit", "interaction", "rule", "law"]):
+            intent = "regulatory_policy"
+        elif any(k in msg_lower for k in ["buy", "order", "need", "want", "get", "purchase"]):
             intent = "purchase"
         elif any(k in msg_lower for k in ["available", "stock", "have"]):
             intent = "availability_check"
@@ -194,6 +198,11 @@ class PharmacyAgent:
         else:
             intent = "general_inquiry"
         trace.append(f"Intent: {intent}")
+
+        # Agent Router
+        if intent == "regulatory_policy":
+            trace.append("Routing to PolicyAgent")
+            return await self._policy_agent.process_message(message)
 
         # Langfuse trace
         lf_trace = None
