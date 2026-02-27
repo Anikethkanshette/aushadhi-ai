@@ -1,31 +1,50 @@
 id,name,generic_name,category,stock_quantity,unit,price,prescription_required,min_stock_level,supplier
-M001,Paracetamol 500mg,Paracetamol,Analgesic,500,strip,25,false,50,MedSupply Co
-M002,Amoxicillin 500mg,Amoxicillin,Antibiotic,200,strip,85,true,30,PharmaCorp
-M003,Omeprazole 20mg,Omeprazole,Antacid,300,strip,45,false,40,MedSupply Co
-M004,Metformin 500mg,Metformin,Antidiabetic,150,strip,30,true,25,DiaCare
-M005,Atorvastatin 10mg,Atorvastatin,Statin,180,strip,75,true,30,CardioMeds
-M006,Amlodipine 5mg,Amlodipine,Antihypertensive,220,strip,60,true,35,CardioMeds
-M007,Cetirizine 10mg,Cetirizine,Antihistamine,400,strip,20,false,60,AllerCare
-M008,Aspirin 75mg,Aspirin,Antiplatelet,350,strip,15,false,50,MedSupply Co
-M009,Ibuprofen 400mg,Ibuprofen,NSAID,280,strip,35,false,45,MedSupply Co
-M010,Pantoprazole 40mg,Pantoprazole,PPI,160,strip,55,true,25,GastroMeds
-M011,Vitamin D3 1000IU,Cholecalciferol,Supplement,600,strip,120,false,80,NutriCare
-M012,Vitamin B12 500mcg,Cyanocobalamin,Supplement,450,strip,90,false,70,NutriCare
-M013,Azithromycin 500mg,Azithromycin,Antibiotic,120,strip,110,true,20,PharmaCorp
-M014,Ciprofloxacin 500mg,Ciprofloxacin,Antibiotic,140,strip,95,true,20,PharmaCorp
-M015,Lisinopril 10mg,Lisinopril,ACE Inhibitor,130,strip,70,true,25,CardioMeds
-M016,Losartan 50mg,Losartan,ARB,170,strip,80,true,30,CardioMeds
-M017,Glimepiride 2mg,Glimepiride,Antidiabetic,90,strip,65,true,15,DiaCare
-M018,Levothyroxine 50mcg,Levothyroxine,Thyroid,80,strip,50,true,15,ThyroCare
-M019,Montelukast 10mg,Montelukast,Antiasthmatic,200,strip,85,true,30,AllerCare
-M020,Dolo 650mg,Paracetamol,Analgesic,800,strip,30,false,100,MedSupply Co
-M021,Combiflam,Ibuprofen+Paracetamol,Analgesic,320,strip,40,false,50,MedSupply Co
-M022,Allegra 120mg,Fexofenadine,Antihistamine,250,strip,75,false,40,AllerCare
-M023,Telmisartan 40mg,Telmisartan,ARB,160,strip,90,true,25,CardioMeds
-M024,Esomeprazole 40mg,Esomeprazole,PPI,140,strip,65,true,25,GastroMeds
-M025,Rosuvastatin 10mg,Rosuvastatin,Statin,120,strip,95,true,20,CardioMeds
-M026,Clopidogrel 75mg,Clopidogrel,Antiplatelet,100,strip,85,true,20,CardioMeds
-M027,Spironolactone 25mg,Spironolactone,Diuretic,80,strip,70,true,15,CardioMeds
-M028,Furosemide 40mg,Furosemide,Diuretic,110,strip,30,true,20,CardioMeds
-M029,Alprazolam 0.25mg,Alprazolam,Anxiolytic,60,strip,45,true,10,NeuroCare
-M030,Pantop DSR,Pantoprazole+Domperidone,PPI Combo,180,strip,75,true,30,GastroMeds
+16066,Panthenol Spray 46.3mg/g Schaum,Dexpanthenol,Dermatology,150,130g,16.95,false,20,RedCare Pharmacy
+976308,NORSAN Omega-3 Total,Omega-3 Fatty Acids,Supplement,200,200ml,27.00,false,30,RedCare Pharmacy
+977179,NORSAN Omega-3 Vegan,Omega-3 Fatty Acids,Supplement,180,100ml,29.00,false,30,RedCare Pharmacy
+983687,NORSAN Omega-3 Kapseln,Omega-3 Fatty Acids,Supplement,220,120st,29.00,false,30,RedCare Pharmacy
+1225428,Vividrin iso EDO antiallergische Augentropfen,Cromoglicic Acid,Ophthalmology,120,30x0.5ml,8.28,false,20,RedCare Pharmacy
+202796,Aqualibra 80mg/90mg/180mg Filmtabletten,Herbal Bladder Formula,Urology,90,60st,27.82,true,15,RedCare Pharmacy
+1103035,Vitasprint Pro Energie,Vitamin B Complex + L-Glutamine,Supplement,160,8st,15.95,false,25,RedCare Pharmacy
+27955,Cystinol akut,Goldenrod Extract,Urology,140,60st,26.50,false,20,RedCare Pharmacy
+30955,Cromo-ratiopharm Augentropfen Einzeldosis,Cromoglicate,Ophthalmology,110,20x0.5ml,7.59,false,20,RedCare Pharmacy
+1162261,Kijimea Reizdarm PRO,Bifidobacterium bifidum,Gastroenterology,130,28st,38.99,false,20,RedCare Pharmacy
+1118582,Mucosolvan 1 mal taglich Retardkapseln,Ambroxol,Respiratory,100,50st,39.97,true,15,RedCare Pharmacy
+1231006,OMNI-BIOTIC SR-9 mit B-Vitaminen,Lactobacillus + B Vitamins,Probiotics,120,28x3g,44.50,false,20,RedCare Pharmacy
+1245942,Osa Schorf Spray,Zinc Oxide,Dermatology,80,30ml,15.45,false,15,RedCare Pharmacy
+1273105,Multivitamin Fruchtgummibaeren vegan,Multivitamin Complex,Supplement,200,60st,12.74,false,30,RedCare Pharmacy
+1358905,COLPOFIX,Hyaluronic Acid + Lactic Acid,Gynecology,70,50ml,28.98,true,10,RedCare Pharmacy
+1293377,Augentropfen RedCare,Hypromellose,Ophthalmology,150,10ml,12.69,false,25,RedCare Pharmacy
+1313639,MULTILAC Darmsynbiotikum,Probiotics + Prebiotics,Probiotics,110,60st,9.99,false,20,RedCare Pharmacy
+1318622,SAW PALMETO SAGEPALME 350mg,Sabal Serrulatum,Urology,90,100st,8.47,false,15,RedCare Pharmacy
+1329121,Paracetamol apodiscounter 500mg Tabletten,Paracetamol,Analgesic,300,20st,2.06,false,50,RedCare Pharmacy
+1357649,Natural Intimate Creme,Lactic Acid + Glycogen,Personal Care,100,50ml,18.90,false,15,RedCare Pharmacy
+1358513,proBIO 6 Probiotik Kapseln APOMIA,Lactobacillus Mix,Probiotics,120,30st,34.90,false,20,RedCare Pharmacy
+1363580,Eucerin DERMPURE Triple Effect Reinigungsgel,Salicylic Acid,Dermatology,140,150ml,17.25,false,20,RedCare Pharmacy
+1383626,Vitasprint Duo Energie,Vitamin B12 + L-Glutamine,Supplement,130,20st,16.95,false,20,RedCare Pharmacy
+1391183,Bepanthen Wund- und Heilsalbe 50mg/g,Dexpanthenol,Dermatology,180,20g,7.69,false,30,RedCare Pharmacy
+1391185,V-Biotics Flora Complex,Lactobacillus + Bifidobacterium,Probiotics,100,19g,19.90,false,15,RedCare Pharmacy
+1403860,Aveeno Skin Relief Body Lotion,Colloidal Oatmeal,Dermatology,120,300ml,14.99,false,20,RedCare Pharmacy
+1434198,Centrum Vital + Mentale Leistung,Multivitamin + Minerals,Supplement,160,30st,19.95,false,25,RedCare Pharmacy
+1434864,Redcare Wundschutzcreme,Zinc Oxide + Panthenol,Dermatology,130,100ml,14.39,false,20,RedCare Pharmacy
+1435154,Cetaphil Sanft glattende SA Reinigung,Salicylic Acid,Dermatology,110,236ml,13.95,false,20,RedCare Pharmacy
+14176,Magnesium Verla N Dragees magensaftresistent,Magnesium Citrate,Supplement,200,50st,6.40,false,30,RedCare Pharmacy
+70003,Livocab direkt Augentropfen 0.05% Suspension,Levocabastine,Ophthalmology,90,4ml,14.99,true,15,RedCare Pharmacy
+185422,Cetirizin HEXAL Tropfen 10mg/ml,Cetirizine,Antihistamine,160,10ml,13.19,false,25,RedCare Pharmacy
+198010,Loperamid akut 1A Pharma 2mg Hartkapseln,Loperamide,Gastroenterology,140,10st,3.93,false,20,RedCare Pharmacy
+202006,Ramipril 1A Pharma 10mg Tabletten,Ramipril,Antihypertensive,80,20st,12.59,true,15,RedCare Pharmacy
+306595,GRANU FINK femina Hartkapseln,Pumpkin Seed Oil,Urology,110,30st,20.29,false,20,RedCare Pharmacy
+324024,Vitasprint B12 Kapseln,Cyanocobalamin,Supplement,150,20st,17.04,false,25,RedCare Pharmacy
+332568,Sinupret Saft,Herbal Sinus Formula,Respiratory,130,100ml,13.30,false,20,RedCare Pharmacy
+335720,Nurofen 200mg Schmelztabletten Lemon,Ibuprofen,Analgesic,200,12st,10.98,false,30,RedCare Pharmacy
+363715,Vitamin B-Komplex-ratiopharm,Vitamin B Complex,Supplement,170,60st,24.97,false,25,RedCare Pharmacy
+368333,Calmvalera Hevert Tropfen,Valerian + Passionflower,Nervine,90,100ml,35.97,false,15,RedCare Pharmacy
+1428085,femiloges 4mg magensaftresistente Tabletten,Isoflavones,Gynecology,80,30st,20.44,true,15,RedCare Pharmacy
+376212,Umckaloabo Saft fur Kinder,Pelargonium Sidoides,Respiratory,100,120ml,13.15,false,15,RedCare Pharmacy
+368367,DulcoLax 5mg magensaftresistente Tabletten,Bisacodyl,Laxative,160,100st,22.90,false,25,RedCare Pharmacy
+717525,Diclofenac-ratiopharm Schmerzgel,Diclofenac Sodium,Analgesic,140,50g,8.89,false,20,RedCare Pharmacy
+772646,Minoxidil BIO-H-TIN-Pharma 20mg/ml Spray,Minoxidil,Dermatology,60,60ml,22.50,true,10,RedCare Pharmacy
+80435,Eucerin Augentropfen,Hyaluronic Acid,Ophthalmology,130,10ml,13.74,false,20,RedCare Pharmacy
+790661,FeniHydrocort Creme 0.25%,Hydrocortisone,Dermatology,100,20g,8.59,true,15,RedCare Pharmacy
+879236,Eucerin UreaRepair PLUS Lotion 10%,Urea,Dermatology,120,400ml,27.75,false,20,RedCare Pharmacy
+899231,Vigantolvit 2000 IE Vitamin D3,Cholecalciferol,Supplement,250,120st,17.99,false,40,RedCare Pharmacy
