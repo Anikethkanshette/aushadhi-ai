@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route, NavLink } from 'react-router-dom'
 import {
     MessageSquare, Search, ClipboardList, LayoutDashboard,
@@ -8,9 +8,31 @@ import ChatPage from './ChatPage'
 import MedicineSearch from './MedicineSearch'
 import OrderHistory from './OrderHistory'
 import DashboardHome from './DashboardHome'
+import axios from 'axios'
 
 export default function Dashboard({ patient, onLogout, apiBase }) {
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [notifications, setNotifications] = useState([])
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [showNotifs, setShowNotifs] = useState(false)
+
+    useEffect(() => {
+        if (!patient?.abha_id) return
+
+        const fetchNotifs = async () => {
+            try {
+                const res = await axios.get(`${apiBase}/patients/${patient.abha_id}/notifications`)
+                setNotifications(res.data.notifications)
+                setUnreadCount(res.data.unread)
+            } catch (e) { console.error('Error fetching notifications', e) }
+        }
+
+        fetchNotifs()
+        const intervalId = setInterval(fetchNotifs, 10000)
+        return () => clearInterval(intervalId)
+    }, [patient, apiBase])
+
+    if (!patient) return null;
 
     const navItems = [
         { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', end: true },
@@ -104,11 +126,58 @@ export default function Dashboard({ patient, onLogout, apiBase }) {
                         {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
                     <div className="flex-1" />
-                    <span className="badge badge-green">
+                    <span className="badge badge-green hide-on-mobile">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow" />
                         AI Online
                     </span>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
+
+                    {/* Notification Bell */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowNotifs(!showNotifs)}
+                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl relative transition-colors"
+                        >
+                            <Bell className="w-5 h-5" />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card" />
+                            )}
+                        </button>
+
+                        {/* Dropdown */}
+                        {showNotifs && (
+                            <div className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-50">
+                                <div className="p-4 border-b border-border flex justify-between items-center bg-white/5">
+                                    <h4 className="font-semibold text-white">Notifications</h4>
+                                    {unreadCount > 0 && (
+                                        <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                            {unreadCount} New
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+                                    {notifications.length === 0 ? (
+                                        <div className="p-6 text-center text-slate-500 text-sm">No new notifications</div>
+                                    ) : (
+                                        <div className="divide-y divide-border">
+                                            {notifications.map(n => (
+                                                <div key={n.id} className={`p-4 hover:bg-white/5 transition-colors ${!n.read ? 'bg-indigo-500/5' : ''}`}>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h5 className="font-semibold text-sm text-white">{n.title}</h5>
+                                                        <span className="text-[10px] text-slate-500">
+                                                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-400 leading-snug">{n.message}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold shadow-lg">
                         {patient.name?.charAt(0) || 'P'}
                     </div>
                 </header>

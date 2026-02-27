@@ -1,0 +1,12 @@
+[
+  {
+    "id": "notif_0ee156f3",
+    "patient_id": "PAT004",
+    "abha_id": "2004-0004-0004",
+    "title": "Order Update",
+    "message": "Update: Order Fulfilled - Mucosolvan 1 mal taglich Retardkapseln",
+    "timestamp": "2026-02-28T01:19:36.096625",
+    "read": false,
+    "type": "success"
+  }
+]

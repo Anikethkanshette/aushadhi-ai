@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from database import get_patient_orders
+from database import get_patient_orders, get_patient_notifications
 from typing import Optional
 from datetime import date, datetime
 
@@ -101,3 +101,10 @@ async def get_refill_alerts():
             pass
 
     return {"alerts": alerts, "total": len(alerts)}
+
+
+@router.get("/{abha_id}/notifications")
+async def get_notifications(abha_id: str):
+    notifs = get_patient_notifications(abha_id=abha_id)
+    unread_count = sum(1 for n in notifs if not n.get("read"))
+    return {"notifications": notifs, "total": len(notifs), "unread": unread_count}

@@ -1,11 +1,13 @@
 import csv
 import os
+import json
 from typing import List, Dict, Optional
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
 _medicines_cache: Optional[List[Dict]] = None
 _orders_cache: Optional[List[Dict]] = None
+_notifications_cache: Optional[List[Dict]] = None
 
 
 def load_medicines() -> List[Dict]:
@@ -101,8 +103,78 @@ def get_patient_orders(patient_id: str = None, abha_id: str = None) -> List[Dict
     return result
 
 
+def get_all_orders() -> List[Dict]:
+    return load_orders()
+
+
+def update_order_status(order_id: str, status: str) -> bool:
+    global _orders_cache
+    orders = load_orders()
+    updated = False
+    for order in orders:
+        if order["order_id"] == order_id:
+            order["status"] = status
+            updated = True
+            break
+            
+    if updated:
+        _orders_cache = orders
+        filepath = os.path.join(DATA_DIR, "order_history.csv")
+        with open(filepath, "w", newline="", encoding="utf-8") as f:
+            if orders:
+                writer = csv.DictWriter(f, fieldnames=orders[0].keys())
+                writer.writeheader()
+                writer.writerows(orders)
+        return True
+    return False
+
+
+def load_notifications() -> List[Dict]:
+    global _notifications_cache
+    if _notifications_cache is not None:
+        return _notifications_cache
+
+    filepath = os.path.join(DATA_DIR, "notifications.json")
+    if not os.path.exists(filepath):
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump([], f)
+        _notifications_cache = []
+        return []
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        try:
+            notifs = json.load(f)
+        except json.JSONDecodeError:
+            notifs = []
+    _notifications_cache = notifs
+    return notifs
+
+
+def save_notification(notification: Dict) -> None:
+    global _notifications_cache
+    notifs = load_notifications()
+    notifs.append(notification)
+    _notifications_cache = notifs
+
+    filepath = os.path.join(DATA_DIR, "notifications.json")
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(notifs, f, indent=2)
+
+
+def get_patient_notifications(patient_id: str = None, abha_id: str = None) -> List[Dict]:
+    notifs = load_notifications()
+    result = []
+    for n in notifs:
+        if patient_id and n.get("patient_id") == patient_id:
+            result.append(n)
+        elif abha_id and n.get("abha_id") == abha_id:
+            result.append(n)
+    return sorted(result, key=lambda x: x["timestamp"], reverse=True)
+
+
 def invalidate_cache():
-    global _medicines_cache, _orders_cache
+    global _medicines_cache, _orders_cache, _notifications_cache
     _medicines_cache = None
     _orders_cache = None  
+    _notifications_cache = None
     

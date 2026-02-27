@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import AbhaLogin from './pages/AbhaLogin'
 import Dashboard from './pages/Dashboard'
+import PharmacistLogin from './pages/pharmacist/PharmacistLogin'
+import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
 import { seedMedicines, seedOrders, db } from './db'
 import axios from 'axios'
 
@@ -14,6 +16,11 @@ function App() {
             return stored ? JSON.parse(stored) : null
         } catch { return null }
     })
+
+    const [pharmacistToken, setPharmacistToken] = useState(() => {
+        return localStorage.getItem('aushadhi_pharmacist_token') || null
+    })
+
     const [seeded, setSeeded] = useState(false)
 
     useEffect(() => {
@@ -48,10 +55,21 @@ function App() {
         localStorage.removeItem('aushadhi_patient')
     }
 
+    const handlePharmacistLogin = (token) => {
+        setPharmacistToken(token)
+        localStorage.setItem('aushadhi_pharmacist_token', token)
+    }
+
+    const handlePharmacistLogout = () => {
+        setPharmacistToken(null)
+        localStorage.removeItem('aushadhi_pharmacist_token')
+    }
+
     return (
         <Router>
             <div className="min-h-screen bg-surface text-white">
                 <Routes>
+                    {/* Patient Routes */}
                     <Route
                         path="/"
                         element={
@@ -66,6 +84,24 @@ function App() {
                             patient
                                 ? <Dashboard patient={patient} onLogout={handleLogout} apiBase={API_BASE} />
                                 : <Navigate to="/" replace />
+                        }
+                    />
+
+                    {/* Pharmacist Routes */}
+                    <Route
+                        path="/pharmacist/login"
+                        element={
+                            pharmacistToken
+                                ? <Navigate to="/pharmacist/dashboard" replace />
+                                : <PharmacistLogin onLogin={handlePharmacistLogin} apiBase={API_BASE} />
+                        }
+                    />
+                    <Route
+                        path="/pharmacist/*"
+                        element={
+                            pharmacistToken
+                                ? <PharmacistDashboard onLogout={handlePharmacistLogout} apiBase={API_BASE} token={pharmacistToken} />
+                                : <Navigate to="/pharmacist/login" replace />
                         }
                     />
                 </Routes>

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 
 
 class Medicine(BaseModel):
@@ -114,3 +114,27 @@ class RefillAlert(BaseModel):
     next_refill_date: str
     days_until_refill: int
     urgency: str
+
+
+class PharmacistLogin(BaseModel):
+    username: str
+    password: str
+
+
+class InAppNotification(BaseModel):
+    id: str
+    patient_id: str
+    abha_id: Optional[str] = None
+    title: str
+    message: str
+    timestamp: str
+    read: bool = False
+    type: str = "info"  # info, success, warning, error
+
+
+class AgentNotificationResponse(BaseModel):
+    whatsapp: str
+    sms: str
+    email_subject: str
+    email_body: str
+    in_app: str
