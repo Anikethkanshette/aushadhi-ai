@@ -210,4 +210,4 @@ aushadhi-ai/
 
 ---
 
-*Built with ❤️ for the AI Pharmacist Hackathon*
+*Built with ❤️ for the Agent Pharmacist Hackathon*
