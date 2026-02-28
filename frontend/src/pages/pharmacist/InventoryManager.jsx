@@ -14,6 +14,7 @@ export default function InventoryManager() {
     const [showPOModal, setShowPOModal] = useState(false)
     const [poDraft, setPoDraft] = useState('')
     const [generating, setGenerating] = useState(false)
+    const [alertsCreated, setAlertsCreated] = useState(null)
 
     useEffect(() => {
         const fetchMeds = async () => {
@@ -50,6 +51,16 @@ export default function InventoryManager() {
         finally { setGenerating(false) }
     }
 
+    const runLowStockScan = async () => {
+        try {
+            const res = await api.post('/pharmacist/alerts/low-stock-scan')
+            setAlertsCreated(res.data.created_count ?? 0)
+        } catch (err) {
+            console.error('Low-stock scan failed:', err)
+            setAlertsCreated(0)
+        }
+    }
+
     const stockPercent = (m) => {
         const pct = (parseInt(m.stock_quantity) / (parseInt(m.min_stock_level) * 3)) * 100
         return Math.min(pct, 100)
@@ -76,6 +87,18 @@ export default function InventoryManager() {
                     style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
                     <Bot className="w-4 h-4" /> AI Restock PO
                 </button>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+                <button
+                    onClick={runLowStockScan}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/25 bg-red-500/10 text-red-300 hover:text-white hover:bg-red-500/20 transition-all text-sm font-semibold"
+                >
+                    <AlertTriangle className="w-4 h-4" /> Generate Low-Stock Alerts
+                </button>
+                {alertsCreated !== null && (
+                    <span className="text-xs text-slate-500">Created {alertsCreated} new alert{alertsCreated === 1 ? '' : 's'}.</span>
+                )}
             </div>
 
             {/* Low stock alert */}

@@ -16,7 +16,13 @@ export default function MedicineSearch() {
     const [query, setQuery] = useState('')
     const [loading, setLoading] = useState(true)
     const [categories, setCategories] = useState([])
-    const [filter, setFilter] = useState({ category: '', rxOnly: false })
+    const [filter, setFilter] = useState({
+        category: '',
+        rxType: 'all',
+        inStockOnly: false,
+        minPrice: '',
+        maxPrice: '',
+    })
 
     // Checkout state
     const [checkoutMed, setCheckoutMed] = useState(null)
@@ -25,6 +31,13 @@ export default function MedicineSearch() {
     const [checkoutState, setCheckoutState] = useState('idle')
     const [checkoutResult, setCheckoutResult] = useState(null)
     const [checkoutError, setCheckoutError] = useState('')
+    const [prescriptionFile, setPrescriptionFile] = useState(null)
+
+    const [cart, setCart] = useState([])
+    const [showCart, setShowCart] = useState(false)
+    const [cartProcessing, setCartProcessing] = useState(false)
+    const [cartError, setCartError] = useState('')
+    const [cartSuccessCount, setCartSuccessCount] = useState(0)
 
     useEffect(() => { loadMedicines() }, [])
     useEffect(() => { applyFilters(allMeds, query, filter) }, [filter, query, allMeds])
@@ -54,7 +67,21 @@ export default function MedicineSearch() {
                 m.category?.toLowerCase().includes(lq)
             )
         }
-        if (f.rxOnly) filtered = filtered.filter(m => m.prescription_required === true || m.prescription_required === 'true')
+        if (f.rxType === 'rx') {
+            filtered = filtered.filter(m => m.prescription_required === true || m.prescription_required === 'true')
+        }
+        if (f.rxType === 'otc') {
+            filtered = filtered.filter(m => !(m.prescription_required === true || m.prescription_required === 'true'))
+        }
+        if (f.inStockOnly) {
+            filtered = filtered.filter(m => parseInt(m.stock_quantity) > 0)
+        }
+        if (f.minPrice !== '') {
+            filtered = filtered.filter(m => parseFloat(m.price) >= parseFloat(f.minPrice || 0))
+        }
+        if (f.maxPrice !== '') {
+            filtered = filtered.filter(m => parseFloat(m.price) <= parseFloat(f.maxPrice || Number.MAX_SAFE_INTEGER))
+        }
         if (f.category) filtered = filtered.filter(m => m.category === f.category)
         setResults(filtered)
     }
@@ -68,6 +95,7 @@ export default function MedicineSearch() {
         setCheckoutMed(med)
         setQuantity(1)
         setHasRx(false)
+        setPrescriptionFile(null)
         setCheckoutState('idle')
         setCheckoutResult(null)
         setCheckoutError('')
@@ -97,6 +125,75 @@ export default function MedicineSearch() {
         }
     }
 
+    const addToCart = (med) => {
+        setCart(prev => {
+            const existing = prev.find(item => String(item.medicine.id) === String(med.id))
+            if (existing) {
+                return prev.map(item =>
+                    String(item.medicine.id) === String(med.id)
+                        ? { ...item, quantity: Math.min(parseInt(item.medicine.stock_quantity || 1), item.quantity + 1) }
+                        : item
+                )
+            }
+            return [...prev, { medicine: med, quantity: 1, hasPrescription: false }]
+        })
+    }
+
+    const updateCartQty = (medicineId, nextQty) => {
+        setCart(prev => prev.map(item =>
+            String(item.medicine.id) === String(medicineId)
+                ? {
+                    ...item,
+                    quantity: Math.max(1, Math.min(parseInt(item.medicine.stock_quantity || 1), nextQty)),
+                }
+                : item
+        ))
+    }
+
+    const toggleCartRx = (medicineId, checked) => {
+        setCart(prev => prev.map(item =>
+            String(item.medicine.id) === String(medicineId)
+                ? { ...item, hasPrescription: checked }
+                : item
+        ))
+    }
+
+    const removeCartItem = (medicineId) => {
+        setCart(prev => prev.filter(item => String(item.medicine.id) !== String(medicineId)))
+    }
+
+    const cartTotal = cart.reduce((sum, item) => sum + (parseFloat(item.medicine.price || 0) * item.quantity), 0)
+
+    const placeCartOrder = async () => {
+        if (!patient || cart.length === 0) return
+        setCartProcessing(true)
+        setCartError('')
+        setCartSuccessCount(0)
+        try {
+            let successCount = 0
+            for (const item of cart) {
+                await api.post(API_ENDPOINTS.ORDERS_CREATE, {
+                    patient_id: patient.patient_id,
+                    patient_name: patient.name,
+                    abha_id: patient.abha_id,
+                    medicine_id: String(item.medicine.id),
+                    medicine_name: item.medicine.name,
+                    quantity: parseInt(item.quantity, 10),
+                    dosage_frequency: 'As directed',
+                    has_prescription: !!item.hasPrescription,
+                })
+                successCount += 1
+            }
+            setCartSuccessCount(successCount)
+            setCart([])
+            loadMedicines()
+        } catch (e) {
+            setCartError(e.message || 'Failed to place all cart orders. Some items may not have been processed.')
+        } finally {
+            setCartProcessing(false)
+        }
+    }
+
     const closeCheckout = () => setCheckoutMed(null)
     const isRx = (med) => med?.prescription_required === true || med?.prescription_required === 'true'
 
@@ -116,6 +213,12 @@ export default function MedicineSearch() {
                     className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 text-xs font-semibold transition-all disabled:opacity-40">
                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
                 </button>
+                <button
+                    onClick={() => setShowCart(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:text-white hover:bg-indigo-500/20 text-xs font-semibold transition-all"
+                >
+                    <ShoppingCart className="w-3.5 h-3.5" /> Cart ({cart.length})
+                </button>
             </div>
 
             {/* Search bar */}
@@ -133,9 +236,43 @@ export default function MedicineSearch() {
                         </button>
                     )}
                 </div>
-                <button onClick={() => setFilter(f => ({ ...f, rxOnly: !f.rxOnly }))}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${filter.rxOnly ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-white/10 text-slate-500 hover:text-white hover:border-white/20'}`}>
-                    <Filter className="w-4 h-4" /> Rx Only
+                <button onClick={() => setFilter(f => ({ ...f, inStockOnly: !f.inStockOnly }))}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${filter.inStockOnly ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-slate-500 hover:text-white hover:border-white/20'}`}>
+                    <Filter className="w-4 h-4" /> In Stock
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <select
+                    value={filter.rxType}
+                    onChange={e => setFilter(f => ({ ...f, rxType: e.target.value }))}
+                    className="input-field py-3 text-sm"
+                >
+                    <option value="all">All Types</option>
+                    <option value="rx">Prescription Only</option>
+                    <option value="otc">OTC Only</option>
+                </select>
+                <input
+                    type="number"
+                    min="0"
+                    value={filter.minPrice}
+                    onChange={e => setFilter(f => ({ ...f, minPrice: e.target.value }))}
+                    placeholder="Min ₹"
+                    className="input-field py-3 text-sm"
+                />
+                <input
+                    type="number"
+                    min="0"
+                    value={filter.maxPrice}
+                    onChange={e => setFilter(f => ({ ...f, maxPrice: e.target.value }))}
+                    placeholder="Max ₹"
+                    className="input-field py-3 text-sm"
+                />
+                <button
+                    onClick={() => setFilter({ category: '', rxType: 'all', inStockOnly: false, minPrice: '', maxPrice: '' })}
+                    className="px-4 py-3 rounded-xl border border-white/10 text-slate-500 hover:text-white hover:border-white/20 text-sm font-semibold transition-all"
+                >
+                    Clear Filters
                 </button>
             </div>
 
@@ -205,15 +342,93 @@ export default function MedicineSearch() {
                                     <p className="text-[11px] text-slate-600 mt-0.5">{med.stock_quantity} {med.unit}s left</p>
                                 </div>
                                 <button onClick={() => openCheckout(med)} disabled={!inStock}
-                                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
                                     style={inStock ? { background: 'linear-gradient(135deg, #059669, #10b981)', boxShadow: '0 4px 16px rgba(16,185,129,0.35)' } : {}}>
-                                    <ShoppingCart className="w-3.5 h-3.5" /> Order
+                                    <ShoppingCart className="w-3.5 h-3.5" /> Buy Now
+                                </button>
+                                <button
+                                    onClick={() => addToCart(med)}
+                                    disabled={!inStock}
+                                    className="ml-2 px-3 py-2.5 rounded-xl text-xs font-semibold border border-white/10 text-slate-300 hover:text-white hover:border-white/25 disabled:opacity-30"
+                                >
+                                    Add
                                 </button>
                             </div>
                         </div>
                     )
                 })}
             </div>
+
+            {showCart && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <div className="w-full max-w-2xl rounded-3xl border border-white/10 overflow-hidden flex flex-col max-h-[90vh] shadow-2xl shadow-black/60"
+                        style={{ background: 'linear-gradient(135deg, #0d1b2a, #0a1628)' }}>
+                        <div className="flex justify-between items-center px-6 py-5 border-b border-white/8">
+                            <h3 className="text-lg font-black text-white flex items-center gap-2">
+                                <ShoppingCart className="w-5 h-5 text-indigo-400" /> Cart Checkout ({cart.length})
+                            </h3>
+                            <button onClick={() => setShowCart(false)} className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1 space-y-3">
+                            {cart.length === 0 ? (
+                                <p className="text-slate-500 text-sm">Your cart is empty.</p>
+                            ) : cart.map(item => {
+                                const rxRequired = isRx(item.medicine)
+                                return (
+                                    <div key={item.medicine.id} className="rounded-xl border border-white/10 p-4 bg-white/5">
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-white font-semibold text-sm">{item.medicine.name}</p>
+                                                <p className="text-slate-500 text-xs">₹{parseFloat(item.medicine.price).toFixed(2)} each</p>
+                                            </div>
+                                            <button onClick={() => removeCartItem(item.medicine.id)} className="text-xs text-red-400 hover:text-red-300">Remove</button>
+                                        </div>
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <button onClick={() => updateCartQty(item.medicine.id, item.quantity - 1)} className="w-8 h-8 rounded-lg border border-white/10 text-white">−</button>
+                                            <span className="text-white font-bold w-8 text-center">{item.quantity}</span>
+                                            <button onClick={() => updateCartQty(item.medicine.id, item.quantity + 1)} className="w-8 h-8 rounded-lg border border-white/10 text-white">+</button>
+                                            <span className="text-slate-500 text-xs">Stock: {item.medicine.stock_quantity}</span>
+                                        </div>
+                                        {rxRequired && (
+                                            <label className="mt-3 flex items-center gap-2 text-xs text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!item.hasPrescription}
+                                                    onChange={e => toggleCartRx(item.medicine.id, e.target.checked)}
+                                                />
+                                                I have prescription for this medicine
+                                            </label>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                            {cartSuccessCount > 0 && (
+                                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-emerald-300 text-sm">
+                                    Successfully placed {cartSuccessCount} order{cartSuccessCount === 1 ? '' : 's'}.
+                                </div>
+                            )}
+                            {cartError && (
+                                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-300 text-sm">
+                                    {cartError}
+                                </div>
+                            )}
+                        </div>
+                        <div className="px-6 py-4 border-t border-white/8 flex items-center justify-between gap-3">
+                            <p className="text-white font-black">Total: ₹{cartTotal.toFixed(2)}</p>
+                            <button
+                                onClick={placeCartOrder}
+                                disabled={cartProcessing || cart.length === 0}
+                                className="px-4 py-2.5 rounded-xl font-bold text-sm text-white disabled:opacity-40"
+                                style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
+                            >
+                                {cartProcessing ? 'Processing…' : 'Place All Orders'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── Checkout Modal ── */}
             {checkoutMed && (
@@ -275,6 +490,22 @@ export default function MedicineSearch() {
                                                         </div>
                                                         <span className="text-slate-300 text-sm">I have a valid prescription</span>
                                                     </label>
+                                                    <div className="mt-3">
+                                                        <label className="block text-[11px] text-slate-500 mb-1">Upload prescription (optional for records)</label>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*,.pdf"
+                                                            onChange={e => {
+                                                                const file = e.target.files?.[0] || null
+                                                                setPrescriptionFile(file)
+                                                                if (file) setHasRx(true)
+                                                            }}
+                                                            className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:text-indigo-300"
+                                                        />
+                                                        {prescriptionFile && (
+                                                            <p className="text-[11px] text-emerald-400 mt-1">Attached: {prescriptionFile.name}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

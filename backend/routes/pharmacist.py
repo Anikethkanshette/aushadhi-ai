@@ -262,6 +262,56 @@ def get_notifications():
     }
 
 
+@router.post("/alerts/low-stock-scan")
+def generate_low_stock_alerts():
+    """Auto-generate pharmacist low-stock alert notifications for today's low inventory items."""
+    medicines = load_medicines()
+    today_str = str(date.today())
+
+    low_stock_items = [
+        m for m in medicines
+        if int(m.get("stock_quantity", 0)) < int(m.get("min_stock_level", 0))
+    ]
+
+    created = []
+    for item in low_stock_items:
+        medicine_id = item.get("id")
+        already_exists = any(
+            n.get("type") == "low_stock"
+            and n.get("sent_at") == today_str
+            and n.get("medicine_id") == medicine_id
+            for n in _NOTIFICATIONS
+        )
+        if already_exists:
+            continue
+
+        notif = {
+            "id": f"NOTIF-{len(_NOTIFICATIONS)+1:04d}",
+            "patient_id": "",
+            "patient_name": "Pharmacist Team",
+            "subject": f"Low stock alert: {item.get('name', medicine_id)}",
+            "message": f"{item.get('name', medicine_id)} is below minimum stock ({item.get('stock_quantity')} < {item.get('min_stock_level')}).",
+            "enhanced": f"Action needed: reorder {item.get('name', medicine_id)}. Current stock {item.get('stock_quantity')} {item.get('unit', 'units')}.",
+            "type": "low_stock",
+            "medicine_id": medicine_id,
+            "sent_at": today_str,
+            "read": False,
+        }
+        _NOTIFICATIONS.append(notif)
+        created.append(notif)
+
+    return {
+        "status": "success",
+        "data": {
+            "created": created,
+            "created_count": len(created),
+            "low_stock_count": len(low_stock_items),
+        },
+        "message": "Low-stock alerts processed successfully",
+        "error_code": None,
+    }
+
+
 @router.get("/patient-notifications/{patient_id}")
 def get_patient_notifications(patient_id: str):
     """Get notifications for a specific patient."""

@@ -100,6 +100,12 @@ const QUICK_PROMPTS = [
     '📋 Show my order history',
 ]
 
+const QUICK_ACTIONS = [
+    { id: 'search', label: 'Search Medicine', message: 'Search medicines for fever and show in-stock options.' },
+    { id: 'order', label: 'Order Help', message: 'Help me place an order for my medicines.' },
+    { id: 'history', label: 'Order History', message: 'Show my recent order history summary.' },
+]
+
 export default function ChatPage({ patient, apiBase }) {
     const [messages, setMessages] = useState([{
         role: 'assistant',
@@ -239,6 +245,23 @@ export default function ChatPage({ patient, apiBase }) {
                         </button>
                     )}
                 </div>
+            </div>
+
+            <div className="px-6 py-2.5 flex gap-2 flex-wrap border-b border-white/5">
+                {QUICK_ACTIONS.map(action => (
+                    <button
+                        key={action.id}
+                        onClick={() => sendMessage(action.message)}
+                        className="text-xs px-3 py-1.5 rounded-xl transition-all font-semibold"
+                        style={{
+                            background: 'rgba(20,184,166,0.10)',
+                            border: '1px solid rgba(20,184,166,0.22)',
+                            color: '#99f6e4',
+                        }}
+                    >
+                        {action.label}
+                    </button>
+                ))}
             </div>
 
             {/* ── Messages ── */}
