@@ -22,9 +22,9 @@ settings = get_settings()
 DATA_DIR = settings.DATA_DIR
 
 # Thread-safe caching
-_medicine_cache_lock = threading.Lock()
-_order_cache_lock = threading.Lock()
-_notification_cache_lock = threading.Lock()
+_medicine_cache_lock = threading.RLock()
+_order_cache_lock = threading.RLock()
+_notification_cache_lock = threading.RLock()
 
 _medicines_cache: Optional[List[Dict]] = None
 _medicines_cache_time: float = 0

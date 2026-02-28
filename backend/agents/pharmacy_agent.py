@@ -11,9 +11,9 @@ try:
     langfuse = Langfuse(
         public_key=os.getenv("LANGFUSE_PUBLIC_KEY", ""),
         secret_key=os.getenv("LANGFUSE_SECRET_KEY", ""),
-        host=os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com"),
+        host=os.getenv("LANGFUSE_HOST") or os.getenv("LANGFUSE_BASE_URL", "https://cloud.langfuse.com"),
     )
-    LANGFUSE_AVAILABLE = bool(os.getenv("LANGFUSE_PUBLIC_KEY"))
+    LANGFUSE_AVAILABLE = bool(os.getenv("LANGFUSE_PUBLIC_KEY")) and bool(os.getenv("LANGFUSE_SECRET_KEY"))
 except Exception:
     langfuse = None
     LANGFUSE_AVAILABLE = False
@@ -258,19 +258,22 @@ class PharmacyAgent:
             return await self._policy_agent.process_message(message)
 
         # Langfuse trace
-        lf_trace = None
-        lf_span = None
+        lf_root_span = None
         if LANGFUSE_AVAILABLE and langfuse:
             try:
-                lf_trace = langfuse.trace(
+                lf_root_span = langfuse.start_span(
                     name="aushadhi-agent",
-                    user_id=patient_id or abha_id or "anonymous",
                     input={"message": message, "intent": intent, "language": language},
-                    metadata={"abha_id": abha_id, "has_prescription": has_prescription},
+                    metadata={
+                        "abha_id": abha_id,
+                        "patient_id": patient_id,
+                        "user_id": patient_id or abha_id or "anonymous",
+                        "has_prescription": has_prescription,
+                    },
                 )
-                trace.append("Langfuse trace started")
+                trace.append("Langfuse span started")
             except Exception as e:
-                trace.append(f"Langfuse trace error: {e}")
+                trace.append(f"Langfuse span error: {e}")
 
         # ── Gemini agent with function calling ──────────────────────────────
         client = self._get_client()
@@ -278,8 +281,8 @@ class PharmacyAgent:
 
         if client and GEMINI_AVAILABLE:
             try:
-                if lf_trace:
-                    lf_span = lf_trace.span(name="gemini-call", input={"message": message})
+                if lf_root_span:
+                    lf_root_span.update(metadata={"gemini_model": "gemini-2.0-flash", "phase": "gemini_call_started"})
 
                 contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=message)])]
                 tool_calls_made = []
@@ -319,8 +322,8 @@ class PharmacyAgent:
                         ))
                     contents.append(genai_types.Content(role="user", parts=tool_results))
 
-                if lf_span:
-                    lf_span.end(output={"response": response_text, "tools_used": tool_calls_made})
+                if lf_root_span:
+                    lf_root_span.update(output={"response": response_text, "tools_used": tool_calls_made})
 
                 action_taken = f"Gemini agent: {len(tool_calls_made)} tool(s) called"
                 trace.append(f"Gemini responded after {len(tool_calls_made)} tool call(s)")
@@ -328,6 +331,11 @@ class PharmacyAgent:
             except Exception as e:
                 trace.append(f"Gemini error: {e}")
                 response_text = None
+        else:
+            if not GEMINI_AVAILABLE:
+                trace.append("Gemini unavailable: google-genai import failed")
+            elif not client:
+                trace.append("Gemini unavailable: missing GEMINI_API_KEY/GOOGLE_API_KEY")
 
         # ── Rule-based fallback ──────────────────────────────────────────────
         if not response_text:
@@ -351,9 +359,10 @@ class PharmacyAgent:
         if welfare_eligible:
             response_text += "\n\n💊 **PMJAY Benefit:** You qualify for 20% discount on this order!"
 
-        if lf_trace:
+        if lf_root_span:
             try:
-                lf_trace.update(output={"response": response_text, "welfare": welfare_eligible})
+                lf_root_span.update(output={"response": response_text, "welfare": welfare_eligible})
+                lf_root_span.end()
             except Exception:
                 pass
 
