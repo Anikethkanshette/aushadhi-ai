@@ -208,6 +208,8 @@ export default function OrderHistory({ patient, apiBase }) {
                                             { label: 'Next Refill', val: order.next_refill_date },
                                             { label: 'Total', val: `₹${parseFloat(order.total_amount).toFixed(2)}` },
                                             { label: 'Has Rx', val: order.has_prescription ? 'Yes ✓' : 'No (OTC)' },
+                                            { label: 'Rx File', val: order.prescription_file_name || '—' },
+                                            { label: 'Rx OCR', val: order.prescription_scan_summary || '—' },
                                         ].map(({ label, val }) => (
                                             <div key={label}>
                                                 <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">{label}</p>

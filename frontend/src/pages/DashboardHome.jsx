@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import api from '../api'
 import { API_ENDPOINTS } from '../config'
 import { useAppContext } from '../context/AppContext'
@@ -25,25 +25,40 @@ export default function DashboardHome() {
     const [medicines, setMedicines] = useState([])
     const [alerts, setAlerts] = useState([])
     const [loadingMeds, setLoadingMeds] = useState(true)
+    const [refillProcessing, setRefillProcessing] = useState({})
+    const [refillStatus, setRefillStatus] = useState({})
+    const [selectedRefillMedicine, setSelectedRefillMedicine] = useState('')
+    const [autoRefillPlans, setAutoRefillPlans] = useState([])
+
+    const loadAutoRefillPlans = useCallback(async () => {
+        if (!patient?.abha_id) return
+        try {
+            const res = await api.get(API_ENDPOINTS.PATIENTS_AUTO_REFILL_SUBSCRIPTIONS(patient.abha_id))
+            setAutoRefillPlans(res.data?.subscriptions || [])
+        } catch {
+            setAutoRefillPlans([])
+        }
+    }, [patient])
+
+    const loadOrdersAndAlerts = useCallback(async () => {
+        if (!patient?.patient_id) return
+        try {
+            const ordersRes = await api.get(API_ENDPOINTS.ORDERS_LIST(patient.patient_id))
+            const os = ordersRes.data.orders || []
+            setOrders(os)
+            const now = new Date()
+            const refills = os.filter(o => {
+                const d = new Date(o.purchase_date)
+                return (now - d) > 20 * 24 * 3600 * 1000
+            }).slice(0, 2)
+            setAlerts(refills)
+        } catch (err) {
+            console.error('Failed to fetch orders:', err)
+        }
+    }, [patient])
 
     useEffect(() => {
         if (!patient?.patient_id) return
-
-        const fetchData = async () => {
-            try {
-                const ordersRes = await api.get(API_ENDPOINTS.ORDERS_LIST(patient.patient_id))
-                const os = ordersRes.data.orders || []
-                setOrders(os)
-                const now = new Date()
-                const refills = os.filter(o => {
-                    const d = new Date(o.purchase_date)
-                    return (now - d) > 20 * 24 * 3600 * 1000
-                }).slice(0, 2)
-                setAlerts(refills)
-            } catch (err) {
-                console.error('Failed to fetch orders:', err)
-            }
-        }
 
         const fetchMedicines = async () => {
             try {
@@ -56,9 +71,89 @@ export default function DashboardHome() {
             }
         }
 
-        fetchData()
+        loadOrdersAndAlerts()
         fetchMedicines()
-    }, [patient])
+        loadAutoRefillPlans()
+    }, [patient, loadOrdersAndAlerts, loadAutoRefillPlans])
+
+    const handleAutoRefill = async (alertOrder) => {
+        if (!patient?.abha_id || !patient?.patient_id || !alertOrder?.medicine_name) return
+
+        const confirmed = window.confirm(
+            `Confirm auto refill for ${alertOrder.medicine_name}? The AI pharmacist will place the order now.`
+        )
+        if (!confirmed) return
+
+        setRefillProcessing(prev => ({ ...prev, [alertOrder.order_id]: true }))
+        setRefillStatus(prev => ({ ...prev, [alertOrder.order_id]: '' }))
+
+        try {
+            const res = await api.post(API_ENDPOINTS.PATIENTS_AUTO_REFILL, {
+                abha_id: patient.abha_id,
+                medicine_name: alertOrder.medicine_name,
+                quantity: 1,
+                confirm: true,
+                channels: ['whatsapp', 'email', 'sms'],
+            })
+
+            const confirmations = res.data?.data?.channel_confirmations || {}
+            const channelsSummary = Object.values(confirmations).join(' | ')
+            const success = res.data?.status === 'success'
+
+            setRefillStatus(prev => ({
+                ...prev,
+                [alertOrder.order_id]: success
+                    ? `Auto refill order placed. ${channelsSummary}`
+                    : (res.data?.message || 'Auto refill request failed.'),
+            }))
+            await loadOrdersAndAlerts()
+        } catch (err) {
+            setRefillStatus(prev => ({
+                ...prev,
+                [alertOrder.order_id]: err?.response?.data?.detail || err?.message || 'Auto refill failed. Please try again.',
+            }))
+        } finally {
+            setRefillProcessing(prev => ({ ...prev, [alertOrder.order_id]: false }))
+        }
+    }
+
+    const enableAutoRefillPlan = async () => {
+        if (!selectedRefillMedicine || !patient?.abha_id) return
+        const confirmed = window.confirm(`Enable auto refill plan for ${selectedRefillMedicine}? You can cancel anytime.`)
+        if (!confirmed) return
+
+        const key = `subscribe-${selectedRefillMedicine}`
+        setRefillProcessing(prev => ({ ...prev, [key]: true }))
+        setRefillStatus(prev => ({ ...prev, [key]: '' }))
+        try {
+            const res = await api.post(API_ENDPOINTS.PATIENTS_AUTO_REFILL_SUBSCRIBE, {
+                abha_id: patient.abha_id,
+                medicine_name: selectedRefillMedicine,
+                quantity: 1,
+                channels: ['whatsapp', 'email', 'sms'],
+            })
+            setRefillStatus(prev => ({ ...prev, [key]: res.data?.message || 'Auto refill plan enabled.' }))
+            await loadAutoRefillPlans()
+        } catch (err) {
+            setRefillStatus(prev => ({ ...prev, [key]: err?.response?.data?.detail || err?.message || 'Failed to enable auto refill plan.' }))
+        } finally {
+            setRefillProcessing(prev => ({ ...prev, [key]: false }))
+        }
+    }
+
+    const cancelAutoRefillPlan = async (subscriptionId, medicineName) => {
+        if (!patient?.abha_id || !subscriptionId) return
+        const confirmed = window.confirm(`Cancel auto refill plan for ${medicineName}?`)
+        if (!confirmed) return
+        const key = `cancel-${subscriptionId}`
+        setRefillProcessing(prev => ({ ...prev, [key]: true }))
+        try {
+            await api.delete(API_ENDPOINTS.PATIENTS_AUTO_REFILL_CANCEL(patient.abha_id, subscriptionId))
+            await loadAutoRefillPlans()
+        } finally {
+            setRefillProcessing(prev => ({ ...prev, [key]: false }))
+        }
+    }
 
     const health = patient?.health_metrics || {}
     const meds = patient?.current_medications || []
@@ -74,6 +169,8 @@ export default function DashboardHome() {
 
     const completedOrders = orders.filter(o => o.status === 'fulfilled' || o.status === 'completed')
     const totalSpend = orders.reduce((a, o) => a + parseFloat(o.total_amount || 0), 0)
+    const refillCandidates = [...new Set((orders || []).map(o => o.medicine_name).filter(Boolean))]
+    const manualRefillKey = `manual-${selectedRefillMedicine || 'none'}`
 
     return (
         <div className="p-8 space-y-7 max-w-5xl anim-fade">
@@ -127,12 +224,97 @@ export default function DashboardHome() {
                             <div className="flex-1">
                                 <p className="text-amber-300 font-semibold text-sm">Refill Due: {a.medicine_name}</p>
                                 <p className="text-slate-500 text-xs mt-0.5">Last ordered {a.purchase_date} · Consider reordering</p>
+                                {refillStatus[a.order_id] && (
+                                    <p className={`text-[11px] mt-1 ${refillStatus[a.order_id].toLowerCase().includes('success') ? 'text-emerald-400' : 'text-amber-300'}`}>
+                                        {refillStatus[a.order_id]}
+                                    </p>
+                                )}
                             </div>
-                            <a href="/dashboard/medicines" className="btn btn-gold text-xs py-2 px-4">Order Now</a>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => handleAutoRefill(a)}
+                                    disabled={!!refillProcessing[a.order_id]}
+                                    className="btn btn-teal text-xs py-2 px-4 disabled:opacity-50"
+                                >
+                                    {refillProcessing[a.order_id] ? 'Processing…' : 'Auto Refill'}
+                                </button>
+                                <a href="/dashboard/medicines" className="btn btn-gold text-xs py-2 px-4">Order Now</a>
+                            </div>
                         </div>
                     ))}
                 </div>
             )}
+
+            {/* Auto refill agent (always visible) */}
+            <div className="card-luxury p-5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <h3 className="text-white font-bold text-sm">Auto Refill Agent</h3>
+                        <p className="text-slate-500 text-xs mt-1">
+                            Confirm once, then AI places order and sends mock confirmations via WhatsApp, Email, and SMS.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <select
+                            value={selectedRefillMedicine}
+                            onChange={e => setSelectedRefillMedicine(e.target.value)}
+                            className="input-field text-sm min-w-[230px]"
+                        >
+                            <option value="">Select medicine for auto refill</option>
+                            {refillCandidates.map(name => (
+                                <option key={name} value={name}>{name}</option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={() => handleAutoRefill({ order_id: manualRefillKey, medicine_name: selectedRefillMedicine })}
+                            disabled={!selectedRefillMedicine || !!refillProcessing[manualRefillKey]}
+                            className="btn btn-teal text-xs py-2 px-4 disabled:opacity-50"
+                        >
+                            {refillProcessing[manualRefillKey] ? 'Processing…' : 'Start Auto Refill'}
+                        </button>
+                        <button
+                            onClick={enableAutoRefillPlan}
+                            disabled={!selectedRefillMedicine || !!refillProcessing[`subscribe-${selectedRefillMedicine}`]}
+                            className="btn btn-gold text-xs py-2 px-4 disabled:opacity-50"
+                        >
+                            {refillProcessing[`subscribe-${selectedRefillMedicine}`] ? 'Saving…' : 'Enable Plan'}
+                        </button>
+                    </div>
+                </div>
+                {refillStatus[manualRefillKey] && (
+                    <p className={`text-[11px] mt-3 ${refillStatus[manualRefillKey].toLowerCase().includes('placed') ? 'text-emerald-400' : 'text-amber-300'}`}>
+                        {refillStatus[manualRefillKey]}
+                    </p>
+                )}
+                {selectedRefillMedicine && refillStatus[`subscribe-${selectedRefillMedicine}`] && (
+                    <p className="text-[11px] mt-2 text-indigo-300">
+                        {refillStatus[`subscribe-${selectedRefillMedicine}`]}
+                    </p>
+                )}
+                {autoRefillPlans.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">Active Auto Refill Plans</p>
+                        {autoRefillPlans.map(plan => (
+                            <div key={plan.subscription_id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-sm text-white font-semibold">{plan.medicine_name}</p>
+                                    <p className="text-[11px] text-slate-500">Qty {plan.quantity} · {Array.isArray(plan.channels) ? plan.channels.join(', ') : 'whatsapp, email, sms'}</p>
+                                </div>
+                                <button
+                                    onClick={() => cancelAutoRefillPlan(plan.subscription_id, plan.medicine_name)}
+                                    disabled={!!refillProcessing[`cancel-${plan.subscription_id}`]}
+                                    className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 disabled:opacity-50"
+                                >
+                                    {refillProcessing[`cancel-${plan.subscription_id}`] ? 'Cancelling…' : 'Cancel Plan'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                {refillCandidates.length === 0 && (
+                    <p className="text-[11px] text-slate-600 mt-3">No previous medicines found yet. Place one order to enable quick auto refill selection.</p>
+                )}
+            </div>
 
             {/* Health metrics */}
             <div>

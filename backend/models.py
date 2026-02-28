@@ -109,6 +109,9 @@ class OrderCreate(BaseModel):
     quantity: int = Field(..., ge=1, le=1000)
     dosage_frequency: str = Field(..., min_length=1)
     has_prescription: bool = False
+    prescription_file_name: Optional[str] = None
+    prescription_scan_summary: Optional[str] = None
+    prescription_verified: bool = False
     
     class Config:
         schema_extra = {
@@ -120,7 +123,10 @@ class OrderCreate(BaseModel):
                 "medicine_name": "Aspirin",
                 "quantity": 10,
                 "dosage_frequency": "2 tablets daily",
-                "has_prescription": False
+                "has_prescription": False,
+                "prescription_file_name": "rx_2026_02_28.jpg",
+                "prescription_scan_summary": "Matched: Aspirin 500mg",
+                "prescription_verified": True
             }
         }
     
@@ -208,6 +214,7 @@ class ChatMessage(BaseModel):
     """Chat message request."""
     message: str = Field(..., min_length=1, max_length=2000)
     patient_id: Optional[str] = None
+    patient_name: Optional[str] = None
     abha_id: Optional[str] = None
     language: Optional[str] = Field(default="en-IN")
     has_prescription: bool = False
@@ -217,6 +224,7 @@ class ChatMessage(BaseModel):
             "example": {
                 "message": "I need aspirin for my headache",
                 "patient_id": "PAT001",
+                "patient_name": "John Doe",
                 "abha_id": "1234-5678-9012",
                 "language": "en-IN",
                 "has_prescription": False

@@ -220,7 +220,11 @@ def save_order(order: Dict) -> bool:
             orders.append(order)
             
             if orders:
-                fieldnames = list(orders[0].keys())
+                fieldnames = []
+                for row in orders:
+                    for key in row.keys():
+                        if key not in fieldnames:
+                            fieldnames.append(key)
                 filepath = os.path.join(DATA_DIR, "order_history.csv")
                 _safe_write_csv(filepath, orders, fieldnames)
             
@@ -253,8 +257,8 @@ def update_medicine_stock(medicine_id: str, quantity_sold: int) -> bool:
     """
     global _medicines_cache, _medicines_cache_time
     
-    if not medicine_id or quantity_sold < 0:
-        raise DataValidationError("Invalid medicine_id or quantity_sold")
+    if not medicine_id:
+        raise DataValidationError("Invalid medicine_id")
     
     with _medicine_cache_lock:
         try:

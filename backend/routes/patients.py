@@ -1,10 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from database import get_patient_orders, get_patient_notifications
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import date, datetime
 import os
+import uuid
+import json
 from database import mark_notification_read, mark_all_notifications_read
+from database import search_medicines
+from models import OrderCreate
+from routes.orders import create_order
+from agents.notification_agent import NotificationAgent
+from config import get_settings
 
 try:
     from google import genai
@@ -99,6 +106,44 @@ SIMULATED_PATIENTS = {
 class PatientLoginRequest(BaseModel):
     abha_id: str
     password: str
+
+
+class AutoRefillRequest(BaseModel):
+    abha_id: str
+    medicine_name: str
+    quantity: int = 1
+    confirm: bool = False
+    channels: Optional[List[str]] = None
+
+
+class AutoRefillSubscriptionRequest(BaseModel):
+    abha_id: str
+    medicine_name: str
+    quantity: int = 1
+    channels: Optional[List[str]] = None
+
+
+def _auto_refill_file_path() -> str:
+    settings = get_settings()
+    return os.path.join(settings.DATA_DIR, "auto_refill_subscriptions.json")
+
+
+def _load_auto_refill_subscriptions() -> List[dict]:
+    path = _auto_refill_file_path()
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def _save_auto_refill_subscriptions(items: List[dict]) -> None:
+    path = _auto_refill_file_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=2)
 
 
 def _strip_sensitive(patient: dict) -> dict:
@@ -241,3 +286,176 @@ async def mark_one_notification_read(abha_id: str, notification_id: str, body: O
 async def mark_all_notifications(abha_id: str):
     updated_count = mark_all_notifications_read(abha_id=abha_id)
     return {"status": "success", "message": "Notifications updated", "data": {"updated_count": updated_count}}
+
+
+@router.post("/auto-refill")
+async def auto_refill_with_confirmation(body: AutoRefillRequest):
+    if not body.confirm:
+        raise HTTPException(status_code=400, detail="User confirmation is required for auto refill")
+
+    patient = SIMULATED_PATIENTS.get(body.abha_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    quantity = max(1, int(body.quantity or 1))
+
+    patient_orders = get_patient_orders(abha_id=body.abha_id)
+    refill_match = next(
+        (o for o in reversed(patient_orders) if body.medicine_name.lower() in str(o.get("medicine_name", "")).lower()),
+        None,
+    )
+
+    medicine_id = None
+    medicine_name = body.medicine_name
+
+    if refill_match:
+        medicine_id = str(refill_match.get("medicine_id"))
+        medicine_name = refill_match.get("medicine_name", body.medicine_name)
+    else:
+        matches = search_medicines(body.medicine_name)
+        if not matches:
+            raise HTTPException(status_code=404, detail="No matching medicine found for auto refill")
+        medicine_id = str(matches[0].get("id"))
+        medicine_name = matches[0].get("name", body.medicine_name)
+
+    order_payload = OrderCreate(
+        patient_id=patient["patient_id"],
+        patient_name=patient["name"],
+        abha_id=patient["abha_id"],
+        medicine_id=medicine_id,
+        medicine_name=medicine_name,
+        quantity=quantity,
+        dosage_frequency="As directed",
+        has_prescription=False,
+    )
+
+    order_result = create_order(order_payload)
+    order_data = (order_result or {}).get("data", {})
+    created_order = order_data.get("order", {})
+
+    requested_channels = [str(c).lower() for c in (body.channels or ["whatsapp", "email", "sms"])]
+    allowed_channels = [c for c in requested_channels if c in {"whatsapp", "email", "sms"}]
+    if not allowed_channels:
+        allowed_channels = ["whatsapp", "email", "sms"]
+
+    notif_agent = NotificationAgent()
+    notif_result = notif_agent.generate_and_dispatch(
+        patient_id=patient["patient_id"],
+        abha_id=patient["abha_id"],
+        patient_name=patient["name"],
+        event_type="refill_order_confirmed",
+        details={
+            "order_id": created_order.get("order_id"),
+            "medicine_name": created_order.get("medicine_name"),
+            "quantity": created_order.get("quantity"),
+            "total_amount": created_order.get("total_amount"),
+        },
+    )
+    generated_msgs = (notif_result or {}).get("data", {})
+
+    channel_map = {
+        "whatsapp": generated_msgs.get("whatsapp") or f"Order confirmed for {medicine_name}.",
+        "email": generated_msgs.get("email_subject") or f"Order Confirmation: {created_order.get('order_id', '')}",
+        "sms": generated_msgs.get("sms") or f"Order {created_order.get('order_id', '')} confirmed.",
+    }
+    destination_map = {
+        "whatsapp": patient.get("phone", "registered phone"),
+        "email": patient.get("email", "registered email"),
+        "sms": patient.get("phone", "registered phone"),
+    }
+
+    channel_confirmations = {
+        channel: f"Mock sent via {channel} to {destination_map[channel]}: {channel_map[channel]}"
+        for channel in allowed_channels
+    }
+
+    return {
+        "status": "success",
+        "message": "Auto refill confirmed and order placed",
+        "data": {
+            "order": created_order,
+            "channels_requested": allowed_channels,
+            "channel_confirmations": channel_confirmations,
+        },
+    }
+
+
+@router.post("/auto-refill/subscribe")
+async def create_auto_refill_subscription(body: AutoRefillSubscriptionRequest):
+    patient = SIMULATED_PATIENTS.get(body.abha_id)
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    allowed_channels = [
+        c for c in [str(ch).lower() for ch in (body.channels or ["whatsapp", "email", "sms"])]
+        if c in {"whatsapp", "email", "sms"}
+    ]
+    if not allowed_channels:
+        allowed_channels = ["whatsapp", "email", "sms"]
+
+    subscriptions = _load_auto_refill_subscriptions()
+    existing = next(
+        (
+            s for s in subscriptions
+            if s.get("abha_id") == body.abha_id
+            and str(s.get("medicine_name", "")).lower() == body.medicine_name.lower()
+            and bool(s.get("active", True))
+        ),
+        None,
+    )
+    if existing:
+        return {
+            "status": "success",
+            "message": "Auto refill subscription already active",
+            "data": {"subscription": existing},
+        }
+
+    subscription = {
+        "subscription_id": f"AR-{uuid.uuid4().hex[:8].upper()}",
+        "abha_id": body.abha_id,
+        "patient_id": patient.get("patient_id"),
+        "patient_name": patient.get("name"),
+        "medicine_name": body.medicine_name,
+        "quantity": max(1, int(body.quantity or 1)),
+        "channels": allowed_channels,
+        "active": True,
+        "created_at": datetime.now().isoformat(),
+    }
+    subscriptions.append(subscription)
+    _save_auto_refill_subscriptions(subscriptions)
+
+    return {
+        "status": "success",
+        "message": "Auto refill subscription enabled",
+        "data": {"subscription": subscription},
+    }
+
+
+@router.get("/{abha_id}/auto-refill/subscriptions")
+async def list_auto_refill_subscriptions(abha_id: str):
+    subscriptions = _load_auto_refill_subscriptions()
+    plans = [s for s in subscriptions if s.get("abha_id") == abha_id and bool(s.get("active", True))]
+    plans.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return {"status": "success", "data": {"subscriptions": plans, "total": len(plans)}}
+
+
+@router.delete("/{abha_id}/auto-refill/subscriptions/{subscription_id}")
+async def cancel_auto_refill_subscription(abha_id: str, subscription_id: str):
+    subscriptions = _load_auto_refill_subscriptions()
+    updated = False
+    for item in subscriptions:
+        if item.get("subscription_id") == subscription_id and item.get("abha_id") == abha_id:
+            item["active"] = False
+            item["cancelled_at"] = datetime.now().isoformat()
+            updated = True
+            break
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="Auto refill subscription not found")
+
+    _save_auto_refill_subscriptions(subscriptions)
+    return {
+        "status": "success",
+        "message": "Auto refill subscription cancelled",
+        "data": {"subscription_id": subscription_id, "active": False},
+    }

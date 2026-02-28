@@ -24,6 +24,7 @@
 | 💊 Medicine Search | 49 real pharmaceutical products with stock, pricing & Rx flags |
 | 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
 | 🛒 Order Flow | Simulated orders with payment + notifications |
+| 🤖 AI Order Placement | Patients can place medicine orders directly through chat ("order 2 paracetamol") |
 | 📊 Welfare Eligibility | PMJAY scheme detection and discounts |
 | 🔁 Predictive Refill AI | Agentic AI calculates consumption from history to predict exactly when you will run out of chronic meds |
 | 📸 AI Prescription OCR | Gemini Vision automatically extracts handwritten medicines and dosages from uploaded Rx photos directly into your cart |
@@ -128,7 +129,7 @@ App → **http://localhost:5173**
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/agent/chat` | AI pharmacist chat |
+| `POST` | `/agent/chat` | AI pharmacist chat + direct natural-language order placement |
 | `GET` | `/medicines/` | List / search products |
 | `GET` | `/medicines/?search=ramipril` | Search by name or generic |
 | `POST` | `/orders/` | Place an order |
@@ -144,6 +145,8 @@ App → **http://localhost:5173**
 | `PUT` | `/pharmacist/orders/{id}/status` | Fulfill orders -> triggers Notification Agent |
 | `GET` | `/pharmacist/inventory` | Real-time stock levels |
 | `POST` | `/pharmacist/generate-po` | AI drafts Purchase Order for low-stock inventory |
+| `POST` | `/webhook/fulfillment` | External fulfillment webhook updates order status and dispatches patient notification |
+| `POST` | `/webhook/notification` | External notification webhook for WhatsApp/SMS/Email simulation |
 
 ---
 
