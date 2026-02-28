@@ -34,6 +34,8 @@ Output ONLY valid JSON matching this schema:
 }
 """
 
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
 class NotificationAgent:
     def __init__(self):
         self.name = "NotificationAgent"
@@ -93,7 +95,7 @@ class NotificationAgent:
             if client and GEMINI_AVAILABLE:
                 try:
                     resp = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model=GEMINI_MODEL_NAME,
                         contents=[genai_types.Content(
                             role="user",
                             parts=[genai_types.Part(text=content)]

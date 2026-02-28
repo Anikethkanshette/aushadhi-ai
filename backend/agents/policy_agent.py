@@ -31,6 +31,8 @@ Rules for your responses:
 - Do NOT help them search for stock or place orders. If they ask to buy, tell them to ask the main Pharmacy Agent instead.
 """
 
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
 class PolicyAgent:
     def __init__(self):
         self.name = "PolicyAgent"
@@ -81,7 +83,7 @@ class PolicyAgent:
                 try:
                     self.logger.debug("Calling Gemini for policy response")
                     resp = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model=GEMINI_MODEL_NAME,
                         contents=[genai_types.Content(
                             role="user",
                             parts=[genai_types.Part(text=content)]

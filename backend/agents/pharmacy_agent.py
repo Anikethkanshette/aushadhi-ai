@@ -48,9 +48,14 @@ def _search_medicine(query: str) -> str:
     res = stock_agent.check_inventory(query)
     if res["status"] == "error":
         return res["message"]
+    if res["status"] == "no_results":
+        return res["message"]
+    matches = res.get("data", {}).get("matches", [])
+    if not matches:
+        return "No matching medicines found."
     
     lines = []
-    for med in res["matches"]:
+    for med in matches:
         status = "In Stock" if med["in_stock"] else "Out of Stock"
         rx = "Prescription Required" if med["prescription_required"] else "OTC"
         lines.append(f"- {med['name']} | ₹{med['price']} | {status} ({med['quantity_available']} units) | {rx}")
@@ -61,14 +66,18 @@ def _check_stock(medicine_id: str) -> str:
     res = stock_agent.check_specific_item(medicine_id)
     if res["status"] == "error":
         return res["message"]
+    data = res.get("data", {})
     
-    if not res["in_stock"]:
-        return f"{res['medicine']} is OUT OF STOCK."
+    if not data.get("in_stock", False):
+        return f"{data.get('name', medicine_id)} is OUT OF STOCK."
     
-    qty = res["quantity_available"]
-    if qty < res["min_stock"]:
-        return f"{res['medicine']} is LOW STOCK: {qty} units at ₹{res['price']}."
-    return f"{res['medicine']}: {qty} units available at ₹{res['price']}."
+    qty = data.get("quantity_available", 0)
+    min_stock = data.get("min_stock_level", 0)
+    price = data.get("price", 0)
+    name = data.get("name", medicine_id)
+    if qty < min_stock:
+        return f"{name} is LOW STOCK: {qty} units at ₹{price}."
+    return f"{name}: {qty} units available at ₹{price}."
 
 
 def _check_prescription(medicine_id: str, abha_id: str = "anonymous", has_rx: bool = False) -> str:
@@ -78,9 +87,11 @@ def _check_prescription(medicine_id: str, abha_id: str = "anonymous", has_rx: bo
     if res["status"] == "rejected":
         return res["message"]
     
-    if res["requires_rx"]:
-        return f"PRESCRIPTION VALIDATED: {res['medicine_name']} approved for dispensing."
-    return f"NO PRESCRIPTION NEEDED: {res['medicine_name']} is available OTC."
+    data = res.get("data", {})
+    medicine_name = data.get("medicine_name", medicine_id)
+    if data.get("prescription_required", False):
+        return f"PRESCRIPTION VALIDATED: {medicine_name} approved for dispensing."
+    return f"NO PRESCRIPTION NEEDED: {medicine_name} is available OTC."
 
 
 def _get_patient_history(patient_id: str) -> str:
@@ -116,8 +127,9 @@ def _estimate_delivery(zip_code: str) -> str:
 
 def _check_welfare(abha_id: str, amount: float) -> str:
     res = welfare_agent.check_eligibility(abha_id, amount)
-    if res["is_eligible"]:
-        return f"Eligible for 20% discount (saves ₹{res['discount_amount']}). Final cart: ₹{res['final_amount']}."
+    data = res.get("data", {})
+    if data.get("is_eligible", False):
+        return f"Eligible for 20% discount (saves ₹{data.get('discount_amount', 0)}). Final cart: ₹{data.get('final_amount', amount)}."
     return "Not eligible for automatic welfare discounts."
 
 # Dispatch table
@@ -212,6 +224,8 @@ You delegate tasks to specialized sub-agents:
 Always be friendly and professional. If a medicine is prescription-only, ask for Rx before proceeding.
 Respond concisely. Use ₹ for Indian Rupee prices."""
 
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+
 class PharmacyAgent:
     def __init__(self):
         self._client = None
@@ -282,14 +296,14 @@ class PharmacyAgent:
         if client and GEMINI_AVAILABLE:
             try:
                 if lf_root_span:
-                    lf_root_span.update(metadata={"gemini_model": "gemini-2.0-flash", "phase": "gemini_call_started"})
+                    lf_root_span.update(metadata={"gemini_model": GEMINI_MODEL_NAME, "phase": "gemini_call_started"})
 
                 contents = [genai_types.Content(role="user", parts=[genai_types.Part(text=message)])]
                 tool_calls_made = []
 
                 for _ in range(5):  # max 5 agentic turns
                     resp = client.models.generate_content(
-                        model="gemini-2.0-flash",
+                        model=GEMINI_MODEL_NAME,
                         contents=contents,
                         config=genai_types.GenerateContentConfig(
                             system_instruction=SYSTEM_PROMPT,
