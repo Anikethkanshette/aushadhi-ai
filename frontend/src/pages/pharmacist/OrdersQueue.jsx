@@ -1,116 +1,173 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
-import { CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react'
+import {
+    CheckCircle2, Clock, XCircle, Loader2, RefreshCw,
+    Pill, IndianRupee, User, Calendar, PackageCheck,
+    ChevronRight, AlertTriangle, TrendingUp, Filter
+} from 'lucide-react'
+
+const STATUS = {
+    pending: { pill: 'badge-yellow', icon: Clock, label: 'Pending' },
+    approved: { pill: 'badge-blue', icon: ChevronRight, label: 'Approved' },
+    fulfilled: { pill: 'badge-green', icon: CheckCircle2, label: 'Fulfilled' },
+    completed: { pill: 'badge-green', icon: CheckCircle2, label: 'Completed' },
+    rejected: { pill: 'badge-red', icon: XCircle, label: 'Rejected' },
+}
 
 export default function OrdersQueue({ apiBase }) {
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(null)
+    const [filter, setFilter] = useState('all')
+    const [justUpdated, setJustUpdated] = useState(null)
+    const intervalRef = useRef(null)
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (silent = false) => {
+        if (!silent) setLoading(true)
         try {
             const res = await axios.get(`${apiBase}/pharmacist/orders`)
-            setOrders(res.data.orders)
-        } catch (e) {
-            console.error('Failed to load orders', e)
-        } finally { setLoading(false) }
+            setOrders(res.data.orders || [])
+        } catch { }
+        finally { setLoading(false) }
     }
 
     useEffect(() => {
         fetchOrders()
+        intervalRef.current = setInterval(() => fetchOrders(true), 15000)
+        return () => clearInterval(intervalRef.current)
     }, [apiBase])
 
     const updateStatus = async (orderId, status) => {
         setActionLoading(orderId)
         try {
             await axios.put(`${apiBase}/pharmacist/orders/${orderId}/status?status=${status}`)
-            await fetchOrders() // refresh
-        } catch (e) {
-            console.error('Failed to update status', e)
-        } finally {
-            setActionLoading(null)
-        }
+            setJustUpdated(orderId)
+            setTimeout(() => setJustUpdated(null), 2000)
+            await fetchOrders(true)
+        } catch { }
+        finally { setActionLoading(null) }
     }
 
-    if (loading) return <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-500" /></div>
+    const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
+    const counts = Object.fromEntries(
+        ['all', 'pending', 'approved', 'fulfilled', 'rejected'].map(s => [
+            s, s === 'all' ? orders.length : orders.filter(o => o.status === s).length
+        ])
+    )
 
     return (
-        <div className="space-y-6">
-            <h3 className="text-xl font-semibold text-white">Orders Queue</h3>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-white/5 text-gray-400 text-sm border-b border-white/10">
-                        <tr>
-                            <th className="p-4 font-medium">Order ID</th>
-                            <th className="p-4 font-medium">Patient</th>
-                            <th className="p-4 font-medium">Medicine</th>
-                            <th className="p-4 font-medium">Date</th>
-                            <th className="p-4 font-medium">Status</th>
-                            <th className="p-4 font-medium text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/10">
-                        {orders.map(order => (
-                            <tr key={order.order_id} className="hover:bg-white/5 transition-colors">
-                                <td className="p-4 text-sm font-mono text-teal-400">{order.order_id}</td>
-                                <td className="p-4">
-                                    <div className="text-white font-medium">{order.patient_name}</div>
-                                    <div className="text-xs text-gray-500 font-mono">{order.abha_id}</div>
-                                </td>
-                                <td className="p-4">
-                                    <div className="text-white">{order.medicine_name}</div>
-                                    <div className="text-xs text-gray-400">Qty: {order.quantity} · ₹{order.total_amount}</div>
-                                </td>
-                                <td className="p-4 text-sm text-gray-400">{order.purchase_date}</td>
-                                <td className="p-4">
-                                    <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-medium border
-                                        ${order.status === 'completed' || order.status === 'fulfilled' ? 'bg-green-500/10 text-green-400 border-green-500/20' : ''}
-                                        ${order.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : ''}
-                                        ${order.status === 'rejected' ? 'bg-red-500/10 text-red-400 border-red-500/20' : ''}
-                                        ${order.status === 'approved' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : ''}
-                                    `}>
-                                        {order.status === 'pending' && <Clock size={12} />}
-                                        {(order.status === 'completed' || order.status === 'fulfilled') && <CheckCircle2 size={12} />}
-                                        {order.status === 'rejected' && <XCircle size={12} />}
-                                        <span className="capitalize">{order.status}</span>
-                                    </span>
-                                </td>
-                                <td className="p-4 text-right">
-                                    {order.status === 'pending' && (
-                                        <div className="flex justify-end space-x-2">
-                                            <button
-                                                onClick={() => updateStatus(order.order_id, 'approved')}
-                                                disabled={actionLoading === order.order_id}
-                                                className="px-3 py-1.5 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded-lg text-sm font-medium transition-colors"
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => updateStatus(order.order_id, 'rejected')}
-                                                disabled={actionLoading === order.order_id}
-                                                className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-sm font-medium transition-colors"
-                                            >
-                                                Reject
-                                            </button>
-                                        </div>
-                                    )}
-                                    {order.status === 'approved' && (
-                                        <button
-                                            onClick={() => updateStatus(order.order_id, 'fulfilled')}
-                                            disabled={actionLoading === order.order_id}
-                                            className="px-4 py-1.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center space-x-2 ml-auto"
-                                        >
-                                            {actionLoading === order.order_id && <Loader2 size={14} className="animate-spin" />}
-                                            <span>Fulfill Order</span>
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        <div className="p-8 max-w-6xl space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                        <PackageCheck className="w-6 h-6 text-blue-400" /> Order Queue
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-1">Approve, fulfill or reject patient orders in real-time.</p>
+                </div>
+                <button onClick={() => fetchOrders()} className="btn-secondary text-sm gap-2 px-4 py-2.5">
+                    <RefreshCw className="w-4 h-4" /> Refresh
+                </button>
             </div>
+
+            {/* Summary strip */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                {[['all', 'All', counts.all, 'text-white'], ['pending', 'Pending', counts.pending, 'text-amber-400'], ['approved', 'Approved', counts.approved, 'text-blue-400'], ['fulfilled', 'Fulfilled', counts.fulfilled, 'text-emerald-400'], ['rejected', 'Rejected', counts.rejected, 'text-red-400']].map(([k, l, n, c]) => (
+                    <button key={k} onClick={() => setFilter(k)}
+                        className={`glass-card p-3 text-center transition-all hover:scale-[1.03] border ${filter === k ? 'border-white/20 bg-white/8' : 'border-white/5'}`}>
+                        <p className={`text-xl font-black ${c}`}>{n}</p>
+                        <p className="text-slate-500 text-xs font-semibold">{l}</p>
+                    </button>
+                ))}
+            </div>
+
+            {/* Table */}
+            {loading ? (
+                <div className="flex items-center justify-center py-20 glass-card">
+                    <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
+                </div>
+            ) : filtered.length === 0 ? (
+                <div className="glass-card py-20 text-center">
+                    <PackageCheck className="w-12 h-12 mx-auto mb-3 text-slate-700" />
+                    <p className="text-slate-500 font-medium">No {filter !== 'all' ? filter : ''} orders</p>
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filtered.map(order => {
+                        const st = STATUS[order.status] || STATUS.pending
+                        const StIcon = st.icon
+                        const isActing = actionLoading === order.order_id
+                        return (
+                            <div key={order.order_id}
+                                className={`glass-card-hover p-5 transition-all ${justUpdated === order.order_id ? 'border-emerald-500/30' : ''}`}>
+                                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
+                                    {/* Order ID */}
+                                    <div>
+                                        <p className="text-teal-400 font-bold text-xs font-mono mb-1">{order.order_id}</p>
+                                        <p className="text-slate-500 text-[10px]">{order.purchase_date}</p>
+                                    </div>
+
+                                    {/* Patient */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
+                                            {order.patient_name?.[0] || 'P'}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-white font-semibold text-sm truncate">{order.patient_name}</p>
+                                            <p className="text-slate-600 text-[10px] font-mono">{order.abha_id}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Medicine */}
+                                    <div>
+                                        <p className="text-white text-sm font-medium truncate max-w-[180px]">{order.medicine_name}</p>
+                                        <p className="text-slate-500 text-xs mt-0.5">Qty {order.quantity} · ₹{parseFloat(order.total_amount).toFixed(2)}</p>
+                                    </div>
+
+                                    {/* Status badge */}
+                                    <div>
+                                        <span className={`badge ${st.pill} gap-1.5`}>
+                                            <StIcon className="w-3 h-3" />
+                                            {st.label}
+                                        </span>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-2 justify-end">
+                                        {order.status === 'pending' && (
+                                            <>
+                                                <button onClick={() => updateStatus(order.order_id, 'approved')}
+                                                    disabled={isActing}
+                                                    className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/25 hover:bg-blue-500/25 transition-all disabled:opacity-50">
+                                                    {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Approve'}
+                                                </button>
+                                                <button onClick={() => updateStatus(order.order_id, 'rejected')}
+                                                    disabled={isActing}
+                                                    className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 transition-all disabled:opacity-50">
+                                                    Reject
+                                                </button>
+                                            </>
+                                        )}
+                                        {order.status === 'approved' && (
+                                            <button onClick={() => updateStatus(order.order_id, 'fulfilled')}
+                                                disabled={isActing}
+                                                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-white shadow-lg shadow-teal-600/25 hover:shadow-teal-500/40 transition-all disabled:opacity-50 flex items-center gap-1.5">
+                                                {isActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+                                                Fulfill
+                                            </button>
+                                        )}
+                                        {(order.status === 'fulfilled' || order.status === 'completed') && (
+                                            <span className="text-xs text-emerald-400 flex items-center gap-1">
+                                                <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
         </div>
     )
 }
