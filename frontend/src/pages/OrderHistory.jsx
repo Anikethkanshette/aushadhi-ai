@@ -13,6 +13,21 @@ const STATUS_STYLES = {
     rejected: { pill: 'badge-red', icon: XCircle, label: 'Rejected' },
 }
 
+const STATUS_FLOW = ['pending', 'approved', 'fulfilled', 'completed']
+
+function buildTimeline(order) {
+    const current = (order.status || 'pending').toLowerCase()
+    const currentIdx = STATUS_FLOW.indexOf(current)
+    return STATUS_FLOW.map((step, idx) => {
+        const done = currentIdx >= idx || (current === 'completed' && step === 'fulfilled')
+        return {
+            step,
+            done,
+            label: STATUS_STYLES[step]?.label || step,
+        }
+    })
+}
+
 export default function OrderHistory({ patient, apiBase }) {
     const [orders, setOrders] = useState([])
     const [filter, setFilter] = useState('all')
@@ -132,7 +147,21 @@ export default function OrderHistory({ patient, apiBase }) {
                                 </button>
 
                                 {isOpen && (
-                                    <div className="px-5 pb-5 border-t border-white/5 pt-4 grid grid-cols-2 sm:grid-cols-3 gap-4 animate-slide-up">
+                                    <div className="px-5 pb-5 border-t border-white/5 pt-4 space-y-4 animate-slide-up">
+                                        <div>
+                                            <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold mb-2">Order Timeline</p>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                {buildTimeline(order).map((step, idx) => (
+                                                    <div key={`${order.order_id}-${step.step}-${idx}`} className={`rounded-xl border px-3 py-2 ${step.done ? 'border-emerald-500/25 bg-emerald-500/10' : 'border-white/10 bg-white/5'}`}>
+                                                        <p className={`text-[10px] font-semibold ${step.done ? 'text-emerald-400' : 'text-slate-500'}`}>{step.label}</p>
+                                                        <p className="text-[10px] text-slate-600 mt-1">{step.done ? 'Reached' : 'Pending'}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <p className="text-[10px] text-slate-600 mt-2">Ordered on {order.purchase_date} · Next refill {order.next_refill_date || '—'}</p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                         {[
                                             { label: 'Order ID', val: order.order_id },
                                             { label: 'Patient', val: order.patient_name },
@@ -152,6 +181,7 @@ export default function OrderHistory({ patient, apiBase }) {
                                                 <p className="text-xs text-emerald-400 font-mono mt-0.5">{order.tx_id}</p>
                                             </div>
                                         )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
