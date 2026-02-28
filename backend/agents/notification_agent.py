@@ -39,7 +39,7 @@ class NotificationAgent:
         self.name = "NotificationAgent"
         self.logger = setup_agent_logger(self.name)
         self._client = None
-        self.logger.info("✓ NotificationAgent initialized")
+        self.logger.info("[OK] NotificationAgent initialized")
 
     def _get_client(self):
         if self._client is None and GEMINI_AVAILABLE:

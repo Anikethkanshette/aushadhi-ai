@@ -12,7 +12,7 @@ class PredictiveAgent:
     def __init__(self):
         self.name = "PredictiveAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ PredictiveAgent initialized")
+        self.logger.info("[OK] PredictiveAgent initialized")
     
     def compute_refill_alerts(self, days_threshold: int = 7) -> Dict[str, any]:
         """

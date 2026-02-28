@@ -1,37 +1,53 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom'
 import {
     Heart, LayoutDashboard, Pill, ClipboardList, MessageSquare,
     LogOut, Bell, ChevronRight, Activity, Zap
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../api'
+import { API_ENDPOINTS } from '../config'
+import { useAppContext } from '../context/AppContext'
 import DashboardHome from './DashboardHome'
 import MedicineSearch from './MedicineSearch'
 import OrderHistory from './OrderHistory'
 import ChatPage from './ChatPage'
 
-export default function Dashboard({ patient, onLogout, apiBase }) {
+export default function Dashboard() {
+    const navigate = useNavigate()
+    const { patient, clearAll } = useAppContext()
     const location = useLocation()
     const [notifications, setNotifications] = useState([])
     const [showNotifs, setShowNotifs] = useState(false)
     const [profile, setProfile] = useState(null)
 
     useEffect(() => {
+        if (!patient) {
+            navigate('/')
+            return
+        }
+
         // Fetch patient profile
-        axios.get(`${apiBase}/patients/abha/${patient?.abha_id}/profile`)
+        api.get(`/patients/abha/${patient?.abha_id}/profile`)
             .then(r => setProfile(r.data))
             .catch(() => { })
 
         // Fetch pharmacist notifications for this patient
         const fetchNotifs = () => {
-            axios.get(`${apiBase}/pharmacist/patient-notifications/${patient?.patient_id || ''}`)
+            api.get(`/pharmacist/patient-notifications/${patient?.patient_id || ''}`)
                 .then(r => setNotifications(r.data.notifications || []))
                 .catch(() => { })
         }
         fetchNotifs()
         const id = setInterval(fetchNotifs, 20000)
         return () => clearInterval(id)
-    }, [apiBase, patient])
+    }, [patient, navigate])
+
+    const handleLogout = () => {
+        clearAll()
+        localStorage.removeItem('aushadhi_patient')
+        api.setToken(null)
+        navigate('/')
+    }
 
     const nav = [
         { path: '/dashboard/home', icon: LayoutDashboard, label: 'Overview', accent: '#6366f1' },
@@ -110,7 +126,7 @@ export default function Dashboard({ patient, onLogout, apiBase }) {
                         <span className="text-[10px] text-slate-600 font-semibold">AI Agents Online</span>
                         <Activity className="w-3 h-3 text-emerald-500/50 ml-auto" />
                     </div>
-                    <button onClick={onLogout}
+                    <button onClick={handleLogout}
                         className="nav-item w-full text-left hover:text-red-400">
                         <div className="icon-pill" style={{ background: 'rgba(244,63,94,0.08)' }}>
                             <LogOut className="w-4 h-4 text-red-500/60" />
@@ -184,10 +200,10 @@ export default function Dashboard({ patient, onLogout, apiBase }) {
 
                 <main className="flex-1 overflow-y-auto scroll">
                     <Routes>
-                        <Route path="home" element={<DashboardHome patient={patient} apiBase={apiBase} profile={profile} />} />
-                        <Route path="medicines" element={<MedicineSearch patient={patient} apiBase={apiBase} />} />
-                        <Route path="orders" element={<OrderHistory patient={patient} apiBase={apiBase} />} />
-                        <Route path="chat" element={<ChatPage patient={patient} apiBase={apiBase} />} />
+                        <Route path="home" element={<DashboardHome profile={profile} />} />
+                        <Route path="medicines" element={<MedicineSearch />} />
+                        <Route path="orders" element={<OrderHistory />} />
+                        <Route path="chat" element={<ChatPage />} />
                         <Route path="*" element={<Navigate to="home" replace />} />
                     </Routes>
                 </main>

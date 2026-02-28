@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import api from '../../api'
+import { API_ENDPOINTS } from '../../config'
 import {
     AlertTriangle, PackageSearch, Loader2, FileText, X, Search,
     TrendingDown, Package, CheckCircle, Bot, Send, Zap, RefreshCw
 } from 'lucide-react'
 
-export default function InventoryManager({ apiBase }) {
+export default function InventoryManager() {
     const [medicines, setMedicines] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
@@ -17,13 +18,15 @@ export default function InventoryManager({ apiBase }) {
     useEffect(() => {
         const fetchMeds = async () => {
             try {
-                const res = await axios.get(`${apiBase}/pharmacist/inventory`)
+                const res = await api.get(API_ENDPOINTS.PHARMACIST_INVENTORY)
                 setMedicines(res.data.medicines || [])
-            } catch { }
+            } catch (err) {
+                console.error('Failed to fetch inventory:', err)
+            }
             finally { setLoading(false) }
         }
         fetchMeds()
-    }, [apiBase])
+    }, [])
 
     const filtered = medicines.filter(m => {
         const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,9 +41,12 @@ export default function InventoryManager({ apiBase }) {
     const generatePO = async () => {
         setGenerating(true); setPoDraft(''); setShowPOModal(true)
         try {
-            const res = await axios.post(`${apiBase}/pharmacist/generate-po`)
-            setPoDraft(res.data.po_draft)
-        } catch { setPoDraft('Failed to generate PO. Please try again.') }
+            const res = await api.post('/pharmacist/generate-po')
+            setPoDraft(res.data.po_draft || 'PO Generated')
+        } catch (err) {
+            setPoDraft('Failed to generate PO. Please try again.')
+            console.error('PO generation failed:', err)
+        }
         finally { setGenerating(false) }
     }
 

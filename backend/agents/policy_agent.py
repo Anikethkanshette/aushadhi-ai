@@ -36,7 +36,7 @@ class PolicyAgent:
         self.name = "PolicyAgent"
         self.logger = setup_agent_logger(self.name)
         self._client = None
-        self.logger.info("✓ PolicyAgent initialized")
+        self.logger.info("[OK] PolicyAgent initialized")
 
     def _get_client(self):
         if self._client is None and GEMINI_AVAILABLE:

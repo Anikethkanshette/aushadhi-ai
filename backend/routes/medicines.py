@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/", response_model=dict)
+@router.get("/")
 async def list_medicines(
     search: Optional[str] = Query(None, min_length=1),
     category: Optional[str] = Query(None, min_length=1),

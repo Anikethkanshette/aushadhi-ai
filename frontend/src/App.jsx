@@ -1,69 +1,40 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import AbhaLogin from './pages/AbhaLogin'
 import Dashboard from './pages/Dashboard'
 import PharmacistLogin from './pages/pharmacist/PharmacistLogin'
 import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
 import { seedMedicines, seedOrders, db } from './db'
-import axios from 'axios'
+import api from './api'
+import ErrorBoundary from './components/ErrorBoundary'
+import { AppProvider, useAppContext } from './context/AppContext'
 
-const API_BASE = 'http://localhost:8000'
-
-function App() {
-    const [patient, setPatient] = useState(() => {
-        try {
-            const stored = localStorage.getItem('aushadhi_patient')
-            return stored ? JSON.parse(stored) : null
-        } catch { return null }
-    })
-
-    const [pharmacistToken, setPharmacistToken] = useState(() => {
-        return localStorage.getItem('aushadhi_pharmacist_token') || null
-    })
-
-    const [seeded, setSeeded] = useState(false)
+/**
+ * Main App Router Component
+ */
+function AppRouter() {
+    const { patient, pharmacist, clearAll } = useAppContext()
 
     useEffect(() => {
         async function initDB() {
             try {
                 // Try to load data from backend and seed IndexedDB
                 const [medsRes, ordersRes] = await Promise.allSettled([
-                    axios.get(`${API_BASE}/medicines/`),
-                    axios.get(`${API_BASE}/orders/`),
+                    api.get('/medicines/'),
+                    api.get('/orders/'),
                 ])
                 if (medsRes.status === 'fulfilled') {
-                    await seedMedicines(medsRes.value.data.medicines || [])
+                    await seedMedicines(medsRes.value.data || [])
                 }
                 if (ordersRes.status === 'fulfilled') {
-                    await seedOrders(ordersRes.value.data.orders || [])
+                    await seedOrders(ordersRes.value.data || [])
                 }
             } catch (e) {
-                console.log('[App] Backend not available, using local IndexedDB only')
+                console.log('[App] Backend not available, using local IndexedDB only', e)
             }
-            setSeeded(true)
         }
         initDB()
     }, [])
-
-    const handleLogin = (patientData) => {
-        setPatient(patientData)
-        localStorage.setItem('aushadhi_patient', JSON.stringify(patientData))
-    }
-
-    const handleLogout = () => {
-        setPatient(null)
-        localStorage.removeItem('aushadhi_patient')
-    }
-
-    const handlePharmacistLogin = (token) => {
-        setPharmacistToken(token)
-        localStorage.setItem('aushadhi_pharmacist_token', token)
-    }
-
-    const handlePharmacistLogout = () => {
-        setPharmacistToken(null)
-        localStorage.removeItem('aushadhi_pharmacist_token')
-    }
 
     return (
         <Router>
@@ -75,14 +46,14 @@ function App() {
                         element={
                             patient
                                 ? <Navigate to="/dashboard" replace />
-                                : <AbhaLogin onLogin={handleLogin} apiBase={API_BASE} />
+                                : <AbhaLogin />
                         }
                     />
                     <Route
                         path="/dashboard/*"
                         element={
                             patient
-                                ? <Dashboard patient={patient} onLogout={handleLogout} apiBase={API_BASE} />
+                                ? <Dashboard />
                                 : <Navigate to="/" replace />
                         }
                     />
@@ -91,22 +62,35 @@ function App() {
                     <Route
                         path="/pharmacist/login"
                         element={
-                            pharmacistToken
+                            pharmacist
                                 ? <Navigate to="/pharmacist/dashboard" replace />
-                                : <PharmacistLogin onLogin={handlePharmacistLogin} apiBase={API_BASE} />
+                                : <PharmacistLogin />
                         }
                     />
                     <Route
                         path="/pharmacist/*"
                         element={
-                            pharmacistToken
-                                ? <PharmacistDashboard onLogout={handlePharmacistLogout} apiBase={API_BASE} token={pharmacistToken} />
+                            pharmacist
+                                ? <PharmacistDashboard />
                                 : <Navigate to="/pharmacist/login" replace />
                         }
                     />
                 </Routes>
             </div>
         </Router>
+    )
+}
+
+/**
+ * Root App Component with providers
+ */
+function App() {
+    return (
+        <ErrorBoundary>
+            <AppProvider>
+                <AppRouter />
+            </AppProvider>
+        </ErrorBoundary>
     )
 }
 

@@ -9,7 +9,7 @@ class WelfareAgent:
     def __init__(self):
         self.name = "WelfareAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ WelfareAgent initialized")
+        self.logger.info("[OK] WelfareAgent initialized")
         
         # Eligible ABHA IDs for PMJAY and other welfare schemes
         self.PMJAY_ELIGIBLE = {

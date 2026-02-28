@@ -10,7 +10,7 @@ class PrescriptionAgent:
     def __init__(self):
         self.name = "PrescriptionAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ PrescriptionAgent initialized")
+        self.logger.info("[OK] PrescriptionAgent initialized")
         
     def validate_prescription(self, medicine_id: str,
                               has_prescription: bool,

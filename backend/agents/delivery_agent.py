@@ -11,7 +11,7 @@ class DeliveryAgent:
     def __init__(self):
         self.name = "DeliveryAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ DeliveryAgent initialized")
+        self.logger.info("[OK] DeliveryAgent initialized")
         
         # Supported couriers
         self.COURIERS = ["Delhivery", "FedEx", "Bluedart", "Ecom Express"]

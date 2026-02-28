@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../api'
+import { API_ENDPOINTS } from '../config'
+import { useAppContext } from '../context/AppContext'
 import {
     Heart, Activity, Pill, ShoppingBag, AlertCircle, TrendingUp,
-    Sparkles, ChevronRight, DropletIcon, Zap, Thermometer, Shield
+    Sparkles, ChevronRight, DropletIcon, Zap, Thermometer, Shield, Package, Loader2
 } from 'lucide-react'
 
 const SPARKLINE_H = [30, 45, 35, 60, 50, 70, 55, 80, 65, 90, 75, 100]
@@ -17,14 +19,20 @@ function Sparkline({ data = SPARKLINE_H, color = '#6366f1' }) {
     )
 }
 
-export default function DashboardHome({ patient, apiBase, profile }) {
+export default function DashboardHome() {
+    const { patient } = useAppContext()
     const [orders, setOrders] = useState([])
+    const [medicines, setMedicines] = useState([])
     const [alerts, setAlerts] = useState([])
+    const [loadingMeds, setLoadingMeds] = useState(true)
 
     useEffect(() => {
-        axios.get(`${apiBase}/orders/?patient_id=${patient?.patient_id}`)
-            .then(r => {
-                const os = r.data.orders || []
+        if (!patient?.patient_id) return
+
+        const fetchData = async () => {
+            try {
+                const ordersRes = await api.get(API_ENDPOINTS.ORDERS_LIST(patient.patient_id))
+                const os = ordersRes.data.orders || []
                 setOrders(os)
                 const now = new Date()
                 const refills = os.filter(o => {
@@ -32,13 +40,30 @@ export default function DashboardHome({ patient, apiBase, profile }) {
                     return (now - d) > 20 * 24 * 3600 * 1000
                 }).slice(0, 2)
                 setAlerts(refills)
-            }).catch(() => { })
-    }, [apiBase, patient])
+            } catch (err) {
+                console.error('Failed to fetch orders:', err)
+            }
+        }
 
-    const health = profile?.health_metrics || {}
-    const meds = profile?.current_medications || []
-    const allergy = profile?.allergies || []
-    const chronic = profile?.chronic_conditions || []
+        const fetchMedicines = async () => {
+            try {
+                const medsRes = await api.get(API_ENDPOINTS.MEDICINES_LIST)
+                setMedicines(medsRes.data.medicines || [])
+            } catch (err) {
+                console.error('Failed to fetch medicines:', err)
+            } finally {
+                setLoadingMeds(false)
+            }
+        }
+
+        fetchData()
+        fetchMedicines()
+    }, [patient])
+
+    const health = patient?.health_metrics || {}
+    const meds = patient?.current_medications || []
+    const allergy = patient?.allergies || []
+    const chronic = patient?.chronic_conditions || []
 
     const healthCards = [
         { label: 'Blood Pressure', value: health.blood_pressure || '—', unit: 'mmHg', icon: Activity, color: '#6366f1', trend: [65, 70, 68, 75, 72, 78, 74, 80, 76, 82] },
@@ -72,8 +97,8 @@ export default function DashboardHome({ patient, apiBase, profile }) {
                         <div className="badge badge-indigo text-xs py-1.5 px-3">
                             <Sparkles className="w-3 h-3" /> AI Active
                         </div>
-                        {profile?.blood_group && <span className="badge badge-red">{profile.blood_group}</span>}
-                        {profile?.age && <span className="badge badge-violet">{profile.age}y · {profile.gender}</span>}
+                        {patient?.blood_group && <span className="badge badge-red">{patient.blood_group}</span>}
+                        {patient?.age && <span className="badge badge-violet">{patient.age}y · {patient.gender}</span>}
                     </div>
                 </div>
 
@@ -130,6 +155,49 @@ export default function DashboardHome({ patient, apiBase, profile }) {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Available Medicines / Inventory */}
+            <div className="card-luxury p-6">
+                <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-white font-black flex items-center gap-2">
+                        <Package className="w-5 h-5 text-indigo-400" /> Available Medicines
+                    </h3>
+                    <a href="/dashboard/medicines" className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+                        Browse all <ChevronRight className="w-3 h-3" />
+                    </a>
+                </div>
+                {loadingMeds ? (
+                    <div className="flex items-center justify-center h-32">
+                        <Loader2 className="w-5 h-5 animate-spin text-indigo-400" />
+                    </div>
+                ) : medicines.length === 0 ? (
+                    <p className="text-slate-600 text-sm py-4 text-center">No medicines available</p>
+                ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {medicines.slice(0, 6).map((med) => {
+                            const isLowStock = parseInt(med.stock_quantity) < parseInt(med.min_stock_level)
+                            return (
+                                <div key={med.id} className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-all cursor-pointer">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div>
+                                            <p className="text-white font-bold text-sm line-clamp-1">{med.name}</p>
+                                            <p className="text-slate-500 text-xs mt-0.5">{med.generic_name}</p>
+                                        </div>
+                                        {isLowStock && <span className="badge badge-red text-[9px] flex-shrink-0">LOW</span>}
+                                    </div>
+                                    <div className="flex items-center justify-between mt-3">
+                                        <div>
+                                            <p className="text-indigo-400 font-black text-sm">₹{parseFloat(med.price).toFixed(2)}</p>
+                                            <p className="text-slate-600 text-xs mt-0.5">Stock: {med.stock_quantity}</p>
+                                        </div>
+                                        <span className="text-[9px] px-2 py-1 rounded-lg bg-white/5 text-slate-400">{med.category}</span>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* 2-col: Medications + Profile */}

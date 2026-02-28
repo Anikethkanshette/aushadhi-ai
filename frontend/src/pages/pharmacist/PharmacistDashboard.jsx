@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
+import { Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom'
 import {
     LogOut, LayoutDashboard, Package, ClipboardList, ShieldAlert,
     Users, FileSpreadsheet, Bell, TrendingUp, AlertTriangle,
     IndianRupee, Activity, CheckCircle2, Clock, BarChart3
 } from 'lucide-react'
-import axios from 'axios'
+import api from '../../api'
+import { API_ENDPOINTS } from '../../config'
+import { useAppContext } from '../../context/AppContext'
 import OrdersQueue from './OrdersQueue'
 import InventoryManager from './InventoryManager'
 import ExportManager from './ExportManager'
@@ -160,19 +162,26 @@ function Overview({ stats, patients }) {
 }
 
 /* ── Shell ─────────────────────────────────────────────────────────────────── */
-export default function PharmacistDashboard({ onLogout, apiBase, token }) {
+export default function PharmacistDashboard() {
+    const navigate = useNavigate()
+    const { pharmacist, clearAll } = useAppContext()
     const location = useLocation()
     const [stats, setStats] = useState(null)
     const [patients, setPatients] = useState([])
     const [notifCount, setNotifCount] = useState(0)
 
     useEffect(() => {
+        if (!pharmacist) {
+            navigate('/pharmacist/login')
+            return
+        }
+
         const load = async () => {
             try {
                 const [sres, pres, nres] = await Promise.all([
-                    axios.get(`${apiBase}/pharmacist/stats`),
-                    axios.get(`${apiBase}/patients/`),
-                    axios.get(`${apiBase}/pharmacist/notifications`),
+                    api.get('/pharmacist/stats'),
+                    api.get('/patients/'),
+                    api.get('/pharmacist/notifications'),
                 ])
                 setStats(sres.data)
                 setPatients(pres.data.patients || [])
@@ -182,7 +191,14 @@ export default function PharmacistDashboard({ onLogout, apiBase, token }) {
         load()
         const id = setInterval(load, 30000)
         return () => clearInterval(id)
-    }, [apiBase])
+    }, [pharmacist, navigate])
+
+    const handleLogout = () => {
+        clearAll()
+        localStorage.removeItem('aushadhi_pharmacist_token')
+        api.setToken(null)
+        navigate('/pharmacist/login')
+    }
 
     const nav = [
         { path: '/pharmacist/dashboard', icon: LayoutDashboard, label: 'Overview', accent: '#14b8a6' },
@@ -246,7 +262,7 @@ export default function PharmacistDashboard({ onLogout, apiBase, token }) {
                         </div>
                         <p className="text-[9px] text-slate-700 font-mono">API · AI Agents Running</p>
                     </div>
-                    <button onClick={onLogout}
+                    <button onClick={handleLogout}
                         className="nav-item w-full text-left hover:text-red-400">
                         <div className="icon-pill" style={{ background: 'rgba(244,63,94,0.08)' }}>
                             <LogOut className="w-4 h-4 text-red-500/60" />
@@ -291,11 +307,11 @@ export default function PharmacistDashboard({ onLogout, apiBase, token }) {
                 <main className="flex-1 overflow-y-auto scroll">
                     <Routes>
                         <Route path="dashboard" element={<Overview stats={stats} patients={patients} />} />
-                        <Route path="orders" element={<OrdersQueue apiBase={apiBase} />} />
-                        <Route path="inventory" element={<InventoryManager apiBase={apiBase} />} />
+                        <Route path="orders" element={<OrdersQueue />} />
+                        <Route path="inventory" element={<InventoryManager />} />
                         <Route path="patients" element={<AllPatients patients={patients} />} />
-                        <Route path="notify" element={<NotifyPatient apiBase={apiBase} patients={patients} />} />
-                        <Route path="exports" element={<ExportManager apiBase={apiBase} />} />
+                        <Route path="notify" element={<NotifyPatient patients={patients} />} />
+                        <Route path="exports" element={<ExportManager />} />
                         <Route path="*" element={<Navigate to="dashboard" replace />} />
                     </Routes>
                 </main>

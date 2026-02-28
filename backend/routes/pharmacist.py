@@ -63,7 +63,7 @@ def _excel_response(wb: "openpyxl.Workbook", filename: str) -> StreamingResponse
 @router.post("/login")
 def pharmacist_login(credentials: PharmacistLogin):
     if credentials.username == "admin" and credentials.password == "admin":
-        return {"access_token": "fake-pharmacist-jwt-token", "token_type": "bearer"}
+        return {"status": "success", "data": {"access_token": "fake-pharmacist-jwt-token", "token_type": "bearer"}, "message": "Login successful", "error_code": None}
     raise HTTPException(status_code=401, detail="Invalid pharmacist credentials")
 
 @router.get("/stats")
@@ -77,18 +77,30 @@ def get_dashboard_stats():
     total_revenue = sum(float(o["total_amount"]) for o in orders if o["status"].lower() == "completed")
     
     return {
-        "total_orders": len(orders),
-        "pending_orders": len(pending_orders),
-        "total_medicines": len(medicines),
-        "low_stock_items": len(low_stock),
-        "total_revenue": total_revenue
+        "status": "success",
+        "data": {
+            "total_orders": len(orders),
+            "pending_orders": len(pending_orders),
+            "total_medicines": len(medicines),
+            "low_stock_items": len(low_stock),
+            "total_revenue": total_revenue
+        },
+        "message": "Dashboard stats retrieved successfully",
+        "error_code": None
     }
 
 @router.get("/orders")
 def get_pharmacist_orders():
     orders = get_all_orders()
     # Return newest first
-    return {"orders": sorted(orders, key=lambda x: x["purchase_date"], reverse=True)}
+    return {
+        "status": "success",
+        "data": {
+            "orders": sorted(orders, key=lambda x: x["purchase_date"], reverse=True)
+        },
+        "message": "Orders retrieved successfully",
+        "error_code": None
+    }
 
 @router.put("/orders/{order_id}/status")
 def update_status(order_id: str, status: str):
@@ -113,14 +125,31 @@ def update_status(order_id: str, status: str):
                 event_type=event_type,
                 details={"medicine_name": order["medicine_name"], "order_id": order_id}
             )
-            return {"message": "Status updated successfully", "generated_notifications": notif_copy}
+            return {
+                "status": "success",
+                "data": {"generated_notifications": notif_copy},
+                "message": "Status updated successfully",
+                "error_code": None
+            }
 
-    return {"message": "Status updated successfully"}
+    return {
+        "status": "success",
+        "data": {"message": "Status updated"},
+        "message": "Status updated successfully",
+        "error_code": None
+    }
 
 @router.get("/inventory")
 def get_inventory():
     medicines = load_medicines()
-    return {"medicines": medicines}
+    return {
+        "status": "success",
+        "data": {
+            "medicines": medicines
+        },
+        "message": "Inventory retrieved successfully",
+        "error_code": None
+    }
 
 
 @router.post("/generate-po")
@@ -223,14 +252,28 @@ def notify_patient(body: dict):
 @router.get("/notifications")
 def get_notifications():
     """Get all sent notifications (pharmacist view)."""
-    return {"notifications": list(reversed(_NOTIFICATIONS))}
+    return {
+        "status": "success",
+        "data": {
+            "notifications": list(reversed(_NOTIFICATIONS))
+        },
+        "message": "Notifications retrieved successfully",
+        "error_code": None
+    }
 
 
 @router.get("/patient-notifications/{patient_id}")
 def get_patient_notifications(patient_id: str):
     """Get notifications for a specific patient."""
     patient_notifs = [n for n in _NOTIFICATIONS if n["patient_id"] == patient_id or not n["patient_id"]]
-    return {"notifications": list(reversed(patient_notifs))}
+    return {
+        "status": "success",
+        "data": {
+            "notifications": list(reversed(patient_notifs))
+        },
+        "message": "Patient notifications retrieved successfully",
+        "error_code": None
+    }
 
 
 # ─── Excel Exports ──────────────────────────────────────────────────────────

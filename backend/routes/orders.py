@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 @router.post("/")
-async def create_order(order: OrderCreate):
+def create_order(order: OrderCreate):
     medicine = get_medicine_by_id(order.medicine_id)
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
@@ -39,7 +39,7 @@ async def create_order(order: OrderCreate):
     # 2. Calculate Pricing & Welfare
     base_amount = float(medicine["price"]) * order.quantity
     welfare_res = welfare_agent.check_eligibility(order.abha_id, base_amount)
-    final_amount = welfare_res["final_amount"]
+    final_amount = welfare_res.get("data", {}).get("final_amount", base_amount)
 
     # 3. Create Transaction in Ledger
     tx_id = f"TXN-{str(uuid.uuid4())[:8].upper()}"
@@ -63,7 +63,7 @@ async def create_order(order: OrderCreate):
 
     # Step B: Process Payment
     payment_res = payment_agent.process_payment(order.patient_id, final_amount, "UPI")
-    if not payment_res["success"]:
+    if payment_res.get("status") != "success":
         # Payment failed! ATOMIC ROLLBACK triggers compensating actions (restoring stock)
         ledger_db.rollback(tx_id)
         raise HTTPException(status_code=402, detail=f"Payment failed: {payment_res['message']}. Stock reserved for this order has been rolled back.")
@@ -96,12 +96,17 @@ async def create_order(order: OrderCreate):
     save_order(new_order)
 
     return {
-        "message": "Order placed successfully using Atomic Ledger transaction.",
-        "order": new_order,
-        "payment": payment_res,
-        "welfare": welfare_res,
-        "delivery": delivery_res,
-        "notifications": simulate_notifications(order.patient_name),
+        "status": "success",
+        "data": {
+            "message": "Order placed successfully using Atomic Ledger transaction.",
+            "order": new_order,
+            "payment": payment_res,
+            "welfare": welfare_res,
+            "delivery": delivery_res,
+            "notifications": simulate_notifications(order.patient_name),
+        },
+        "message": "Order placed successfully",
+        "error_code": None
     }
 
 
