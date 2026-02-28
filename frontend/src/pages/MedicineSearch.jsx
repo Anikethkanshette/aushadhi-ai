@@ -38,6 +38,7 @@ export default function MedicineSearch() {
     const [cartProcessing, setCartProcessing] = useState(false)
     const [cartError, setCartError] = useState('')
     const [cartSuccessCount, setCartSuccessCount] = useState(0)
+    const [recommendations, setRecommendations] = useState([])
 
     useEffect(() => { loadMedicines() }, [])
     useEffect(() => { applyFilters(allMeds, query, filter) }, [filter, query, allMeds])
@@ -99,10 +100,30 @@ export default function MedicineSearch() {
         setCheckoutState('idle')
         setCheckoutResult(null)
         setCheckoutError('')
+        loadRecommendations(med.id)
+    }
+
+    const loadRecommendations = async (medicineId) => {
+        try {
+            const res = await api.get(API_ENDPOINTS.MEDICINES_RECOMMENDATIONS(medicineId))
+            setRecommendations(res.data.recommendations || [])
+        } catch {
+            setRecommendations([])
+        }
     }
 
     const placeOrder = async () => {
         if (!checkoutMed || !patient) return
+        if (!quantity || quantity < 1 || quantity > parseInt(checkoutMed.stock_quantity)) {
+            setCheckoutState('error')
+            setCheckoutError('Please enter a valid quantity within available stock.')
+            return
+        }
+        if (isRx(checkoutMed) && !hasRx) {
+            setCheckoutState('error')
+            setCheckoutError('Prescription confirmation is required for this medicine.')
+            return
+        }
         setCheckoutState('processing')
         setCheckoutError('')
         try {
@@ -166,6 +187,16 @@ export default function MedicineSearch() {
 
     const placeCartOrder = async () => {
         if (!patient || cart.length === 0) return
+        const hasInvalidQty = cart.some(item => !item.quantity || item.quantity < 1 || item.quantity > parseInt(item.medicine.stock_quantity || 0))
+        if (hasInvalidQty) {
+            setCartError('One or more items have invalid quantity values.')
+            return
+        }
+        const missingRx = cart.some(item => isRx(item.medicine) && !item.hasPrescription)
+        if (missingRx) {
+            setCartError('Please confirm prescription for all Rx medicines in cart.')
+            return
+        }
         setCartProcessing(true)
         setCartError('')
         setCartSuccessCount(0)
@@ -515,6 +546,24 @@ export default function MedicineSearch() {
                                         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/5 border border-indigo-500/15 text-xs text-indigo-400">
                                             <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
                                             ABHA linked — welfare discounts applied automatically
+                                        </div>
+                                    )}
+
+                                    {recommendations.length > 0 && (
+                                        <div className="rounded-2xl border border-white/10 p-4 bg-white/5">
+                                            <p className="text-xs text-slate-400 uppercase tracking-wider mb-2">Recommended Alternatives</p>
+                                            <div className="space-y-2">
+                                                {recommendations.map(rec => (
+                                                    <button
+                                                        key={rec.id}
+                                                        onClick={() => openCheckout(rec)}
+                                                        className="w-full text-left px-3 py-2 rounded-xl border border-white/10 hover:border-indigo-500/30 hover:bg-indigo-500/10 transition-all"
+                                                    >
+                                                        <p className="text-sm text-white font-semibold">{rec.name}</p>
+                                                        <p className="text-[11px] text-slate-500">₹{parseFloat(rec.price).toFixed(2)} · {rec.stock_quantity} in stock</p>
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 

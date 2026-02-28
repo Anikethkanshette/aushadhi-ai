@@ -5,7 +5,7 @@ import {
     Package, IndianRupee, RotateCcw, CheckCircle, Clock, XCircle
 } from 'lucide-react'
 import { useAppContext } from '../context/AppContext'
-import { API_CONFIG } from '../config'
+import { API_CONFIG, API_ENDPOINTS } from '../config'
 
 const STATUS_STYLES = {
     completed: { pill: 'badge-green', icon: CheckCircle, label: 'Completed' },
@@ -13,6 +13,7 @@ const STATUS_STYLES = {
     pending: { pill: 'badge-yellow', icon: Clock, label: 'Pending' },
     approved: { pill: 'badge-blue', icon: TrendingUp, label: 'Approved' },
     rejected: { pill: 'badge-red', icon: XCircle, label: 'Rejected' },
+    cancelled: { pill: 'badge-red', icon: XCircle, label: 'Cancelled' },
 }
 
 const STATUS_FLOW = ['pending', 'approved', 'fulfilled', 'completed']
@@ -40,6 +41,8 @@ export default function OrderHistory({ patient, apiBase }) {
     const [search, setSearch] = useState('')
     const [expanded, setExpanded] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [actionLoading, setActionLoading] = useState(null)
+    const [actionError, setActionError] = useState('')
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -54,7 +57,27 @@ export default function OrderHistory({ patient, apiBase }) {
             } catch { } finally { setLoading(false) }
         }
         fetchOrders()
+        const intervalId = setInterval(fetchOrders, 10000)
+        return () => clearInterval(intervalId)
     }, [currentPatient?.abha_id, resolvedApiBase])
+
+    const cancelOrder = async (orderId) => {
+        if (!currentPatient?.abha_id) return
+        setActionLoading(orderId)
+        setActionError('')
+        try {
+            await axios.post(`${resolvedApiBase}${API_ENDPOINTS.ORDERS_CANCEL(orderId)}`, {
+                abha_id: currentPatient.abha_id,
+                reason: 'Cancelled by patient from My Orders',
+            })
+            const res = await axios.get(`${resolvedApiBase}/orders/?abha_id=${encodeURIComponent(currentPatient.abha_id)}`)
+            setOrders((res.data.orders || []).reverse())
+        } catch (err) {
+            setActionError(err?.response?.data?.detail || 'Unable to cancel order right now.')
+        } finally {
+            setActionLoading(null)
+        }
+    }
 
     const filtered = orders.filter(o => {
         if (filter !== 'all' && o.status.toLowerCase() !== filter) return false
@@ -115,6 +138,11 @@ export default function OrderHistory({ patient, apiBase }) {
             </div>
 
             {/* Orders list */}
+            {actionError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {actionError}
+                </div>
+            )}
             {loading ? (
                 <div className="text-center py-16 text-slate-500">
                     <RotateCcw className="w-8 h-8 mx-auto mb-3 animate-spin opacity-40" />
@@ -190,6 +218,17 @@ export default function OrderHistory({ patient, apiBase }) {
                                             <div className="col-span-full">
                                                 <p className="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Transaction ID (Ledger)</p>
                                                 <p className="text-xs text-emerald-400 font-mono mt-0.5">{order.tx_id}</p>
+                                            </div>
+                                        )}
+                                        {['pending', 'approved', 'completed'].includes((order.status || '').toLowerCase()) && (
+                                            <div className="col-span-full flex justify-end">
+                                                <button
+                                                    onClick={() => cancelOrder(order.order_id)}
+                                                    disabled={actionLoading === order.order_id}
+                                                    className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 transition-all disabled:opacity-50"
+                                                >
+                                                    {actionLoading === order.order_id ? 'Cancelling…' : 'Cancel & Refund'}
+                                                </button>
                                             </div>
                                         )}
                                         </div>

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from database import load_orders, save_order, get_patient_orders, get_medicine_by_id, update_medicine_stock
+from database import load_orders, save_order, get_patient_orders, get_medicine_by_id, update_medicine_stock, update_order_status
 from models import OrderCreate
 import uuid
 from datetime import date, timedelta
@@ -134,3 +134,52 @@ async def list_orders(patient_id: Optional[str] = None, abha_id: Optional[str] =
     else:
         orders = load_orders()
     return {"orders": orders, "total": len(orders)}
+
+
+@router.post("/{order_id}/cancel")
+def cancel_order(order_id: str, body: Optional[dict] = None):
+    body = body or {}
+    abha_id = body.get("abha_id")
+    reason = body.get("reason", "Cancelled by patient")
+
+    orders = load_orders()
+    order = next((o for o in orders if o.get("order_id") == order_id), None)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if abha_id and order.get("abha_id") != abha_id:
+        raise HTTPException(status_code=403, detail="Order does not belong to this patient")
+
+    status = (order.get("status") or "").lower()
+    if status in ["cancelled", "rejected"]:
+        raise HTTPException(status_code=400, detail=f"Order already {status}")
+
+    qty = int(order.get("quantity", 0) or 0)
+    if qty <= 0:
+        raise HTTPException(status_code=400, detail="Invalid order quantity for cancellation")
+
+    # Restock item: negative quantity means stock increment in current DB layer
+    restock_ok = update_medicine_stock(order.get("medicine_id"), -qty)
+    if not restock_ok:
+        raise HTTPException(status_code=500, detail="Failed to restock medicine during cancellation")
+
+    update_order_status(order_id, "cancelled")
+
+    refund_amount = float(order.get("total_amount", 0) or 0)
+    refund_id = f"RFND-{str(uuid.uuid4())[:8].upper()}"
+
+    return {
+        "status": "success",
+        "data": {
+            "order_id": order_id,
+            "refund": {
+                "refund_id": refund_id,
+                "amount": refund_amount,
+                "status": "processed",
+                "reason": reason,
+            },
+            "restocked_units": qty,
+        },
+        "message": "Order cancelled and refund processed",
+        "error_code": None,
+    }

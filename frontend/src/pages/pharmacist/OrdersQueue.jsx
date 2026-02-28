@@ -5,6 +5,7 @@ import {
     Pill, IndianRupee, User, Calendar, PackageCheck,
     ChevronRight, AlertTriangle, TrendingUp, Filter
 } from 'lucide-react'
+import { API_CONFIG } from '../../config'
 
 const STATUS = {
     pending: { pill: 'badge-yellow', icon: Clock, label: 'Pending' },
@@ -15,17 +16,21 @@ const STATUS = {
 }
 
 export default function OrdersQueue({ apiBase }) {
+    const resolvedApiBase = apiBase || API_CONFIG.BASE_URL
     const [orders, setOrders] = useState([])
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(null)
     const [filter, setFilter] = useState('all')
     const [justUpdated, setJustUpdated] = useState(null)
     const intervalRef = useRef(null)
+    const [selectedOrderIds, setSelectedOrderIds] = useState([])
+    const [bulkLoading, setBulkLoading] = useState(false)
+    const [actionError, setActionError] = useState('')
 
     const fetchOrders = async (silent = false) => {
         if (!silent) setLoading(true)
         try {
-            const res = await axios.get(`${apiBase}/pharmacist/orders`)
+            const res = await axios.get(`${resolvedApiBase}/pharmacist/orders`)
             setOrders(res.data.orders || [])
         } catch { }
         finally { setLoading(false) }
@@ -35,17 +40,45 @@ export default function OrdersQueue({ apiBase }) {
         fetchOrders()
         intervalRef.current = setInterval(() => fetchOrders(true), 15000)
         return () => clearInterval(intervalRef.current)
-    }, [apiBase])
+    }, [resolvedApiBase])
 
     const updateStatus = async (orderId, status) => {
         setActionLoading(orderId)
+        setActionError('')
         try {
-            await axios.put(`${apiBase}/pharmacist/orders/${orderId}/status?status=${status}`)
+            await axios.put(`${resolvedApiBase}/pharmacist/orders/${orderId}/status?status=${status}`)
             setJustUpdated(orderId)
             setTimeout(() => setJustUpdated(null), 2000)
             await fetchOrders(true)
-        } catch { }
+        } catch {
+            setActionError('Failed to update order status. Please try again.')
+        }
         finally { setActionLoading(null) }
+    }
+
+    const toggleOrderSelection = (orderId) => {
+        setSelectedOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId])
+    }
+
+    const runBulkUpdate = async (status) => {
+        if (selectedOrderIds.length === 0) {
+            setActionError('Select at least one order for bulk update.')
+            return
+        }
+        setBulkLoading(true)
+        setActionError('')
+        try {
+            await axios.put(`${resolvedApiBase}/pharmacist/orders/bulk-status`, {
+                order_ids: selectedOrderIds,
+                status,
+            })
+            setSelectedOrderIds([])
+            await fetchOrders(true)
+        } catch {
+            setActionError('Bulk update failed. Please retry.')
+        } finally {
+            setBulkLoading(false)
+        }
     }
 
     const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter)
@@ -82,6 +115,35 @@ export default function OrdersQueue({ apiBase }) {
             </div>
 
             {/* Table */}
+            {actionError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {actionError}
+                </div>
+            )}
+            <div className="flex items-center gap-2 flex-wrap">
+                <button
+                    onClick={() => runBulkUpdate('approved')}
+                    disabled={bulkLoading || selectedOrderIds.length === 0}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-blue-500/15 text-blue-400 border border-blue-500/25 disabled:opacity-50"
+                >
+                    Bulk Approve
+                </button>
+                <button
+                    onClick={() => runBulkUpdate('fulfilled')}
+                    disabled={bulkLoading || selectedOrderIds.length === 0}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 disabled:opacity-50"
+                >
+                    Bulk Fulfill
+                </button>
+                <button
+                    onClick={() => runBulkUpdate('rejected')}
+                    disabled={bulkLoading || selectedOrderIds.length === 0}
+                    className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/15 text-red-400 border border-red-500/25 disabled:opacity-50"
+                >
+                    Bulk Reject
+                </button>
+                <span className="text-xs text-slate-500">Selected: {selectedOrderIds.length}</span>
+            </div>
             {loading ? (
                 <div className="flex items-center justify-center py-20 glass-card">
                     <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
@@ -100,7 +162,14 @@ export default function OrdersQueue({ apiBase }) {
                         return (
                             <div key={order.order_id}
                                 className={`glass-card-hover p-5 transition-all ${justUpdated === order.order_id ? 'border-emerald-500/30' : ''}`}>
-                                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
+                                <div className="grid grid-cols-1 sm:grid-cols-6 gap-4 items-center">
+                                    <div>
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedOrderIds.includes(order.order_id)}
+                                            onChange={() => toggleOrderSelection(order.order_id)}
+                                        />
+                                    </div>
                                     {/* Order ID */}
                                     <div>
                                         <p className="text-teal-400 font-bold text-xs font-mono mb-1">{order.order_id}</p>

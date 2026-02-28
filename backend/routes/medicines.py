@@ -295,3 +295,46 @@ async def get_alternatives(medicine_name: str):
             error_code=ErrorCode.INTERNAL_ERROR,
             status=ResponseStatus.SERVER_ERROR,
         )
+
+
+@router.get("/recommendations/{medicine_id}")
+async def get_recommendations(medicine_id: str, limit: int = Query(4, ge=1, le=10)):
+    """Get simple medicine recommendations based on category and stock."""
+    try:
+        medicines = load_medicines()
+        base = next((m for m in medicines if str(m.get("id")) == str(medicine_id)), None)
+        if not base:
+            return create_error_response(
+                message=f"Medicine '{medicine_id}' not found",
+                error_code=ErrorCode.NOT_FOUND,
+                status=ResponseStatus.NOT_FOUND,
+            )
+
+        same_category = [
+            m for m in medicines
+            if str(m.get("id")) != str(medicine_id)
+            and m.get("category") == base.get("category")
+        ]
+        same_category.sort(
+            key=lambda x: (
+                int(x.get("stock_quantity", 0)) <= 0,
+                float(x.get("price", 0)),
+            )
+        )
+
+        recommendations = same_category[:limit]
+        return create_success_response(
+            message=f"Retrieved {len(recommendations)} recommendations",
+            data={
+                "base_medicine": base,
+                "recommendations": recommendations,
+                "total": len(recommendations),
+            },
+        )
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {e}", exc_info=True)
+        return create_error_response(
+            message="An error occurred while fetching recommendations",
+            error_code=ErrorCode.INTERNAL_ERROR,
+            status=ResponseStatus.SERVER_ERROR,
+        )
