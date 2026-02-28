@@ -4,6 +4,8 @@ import {
     ClipboardList, Pill, ChevronDown, ChevronUp, Search, Calendar, TrendingUp,
     Package, IndianRupee, RotateCcw, CheckCircle, Clock, XCircle
 } from 'lucide-react'
+import { useAppContext } from '../context/AppContext'
+import { API_CONFIG } from '../config'
 
 const STATUS_STYLES = {
     completed: { pill: 'badge-green', icon: CheckCircle, label: 'Completed' },
@@ -29,6 +31,10 @@ function buildTimeline(order) {
 }
 
 export default function OrderHistory({ patient, apiBase }) {
+    const { patient: contextPatient } = useAppContext()
+    const currentPatient = patient || contextPatient
+    const resolvedApiBase = apiBase || API_CONFIG.BASE_URL
+
     const [orders, setOrders] = useState([])
     const [filter, setFilter] = useState('all')
     const [search, setSearch] = useState('')
@@ -37,13 +43,18 @@ export default function OrderHistory({ patient, apiBase }) {
 
     useEffect(() => {
         const fetchOrders = async () => {
+            if (!currentPatient?.abha_id) {
+                setOrders([])
+                setLoading(false)
+                return
+            }
             try {
-                const res = await axios.get(`${apiBase}/orders/?abha_id=${patient.abha_id}`)
+                const res = await axios.get(`${resolvedApiBase}/orders/?abha_id=${encodeURIComponent(currentPatient.abha_id)}`)
                 setOrders((res.data.orders || []).reverse())
             } catch { } finally { setLoading(false) }
         }
         fetchOrders()
-    }, [patient, apiBase])
+    }, [currentPatient?.abha_id, resolvedApiBase])
 
     const filtered = orders.filter(o => {
         if (filter !== 'all' && o.status.toLowerCase() !== filter) return false
