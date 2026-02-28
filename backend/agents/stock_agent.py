@@ -10,7 +10,7 @@ class StockCheckAgent:
     def __init__(self):
         self.name = "StockCheckAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ StockCheckAgent initialized")
+        self.logger.info("[OK] StockCheckAgent initialized")
         
     def check_inventory(self, query: str) -> Dict[str, Any]:
         """

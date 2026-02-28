@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ShieldAlert, ArrowRight, Loader2, Zap, Package, Users, FileSpreadsheet } from 'lucide-react'
+import api from '../../api'
+import { API_ENDPOINTS } from '../../config'
+import { useAppContext } from '../../context/AppContext'
 
 const CAPS = [
     { icon: Zap, label: 'Live Order Management' },
@@ -9,7 +12,10 @@ const CAPS = [
     { icon: FileSpreadsheet, label: 'Excel Data Exports' },
 ]
 
-export default function PharmacistLogin({ onLogin, apiBase }) {
+export default function PharmacistLogin() {
+    const navigate = useNavigate()
+    const { setPharmacist } = useAppContext()
+    
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [showPass, setShowPass] = useState(false)
@@ -20,10 +26,13 @@ export default function PharmacistLogin({ onLogin, apiBase }) {
         e?.preventDefault()
         setLoading(true); setError('')
         try {
-            const res = await axios.post(`${apiBase}/pharmacist/login`, { username, password })
-            onLogin(res.data.access_token)
+            const res = await api.post(API_ENDPOINTS.AUTH_PHARMACIST_LOGIN, { username, password })
+            api.setToken(res.data.access_token)
+            setPharmacist({ username })
+            localStorage.setItem('aushadhi_pharmacist_token', res.data.access_token)
+            navigate('/pharmacist/dashboard')
         } catch (err) {
-            setError(err.response?.data?.detail || 'Invalid credentials')
+            setError(err.message || 'Invalid credentials')
         } finally { setLoading(false) }
     }
 

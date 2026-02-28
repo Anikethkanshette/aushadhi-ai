@@ -406,7 +406,7 @@ class RefillAlert(BaseModel):
 class PharmacistLogin(BaseModel):
     """Pharmacist login request."""
     username: str = Field(..., min_length=1)
-    password: str = Field(..., min_length=6)
+    password: str = Field(..., min_length=1)
     
     class Config:
         schema_extra = {

@@ -11,7 +11,7 @@ class PaymentAgent:
     def __init__(self):
         self.name = "PaymentAgent"
         self.logger = setup_agent_logger(self.name)
-        self.logger.info("✓ PaymentAgent initialized")
+        self.logger.info("[OK] PaymentAgent initialized")
         
         # Supported payment methods
         self.PAYMENT_METHODS = ["UPI", "CREDIT_CARD", "DEBIT_CARD", "NET_BANKING", "WALLET"]

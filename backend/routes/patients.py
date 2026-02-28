@@ -79,6 +79,19 @@ SIMULATED_PATIENTS = {
         "vaccination_status": { "COVID-19": "Fully Vaccinated", "Flu": "2025 dose taken" },
         "health_metrics": {"bmi": "23.7", "bp": "118/76 mmHg", "sugar_fasting": "88 mg/dL"}
     },
+    "PAT001": {
+        "patient_id": "PAT001", "abha_id": "PAT001", "password": "patient123",
+        "name": "Test Patient", "age": 35, "gender": "Male",
+        "phone": "+91-9999999999", "email": "patient@example.com",
+        "blood_group": "O+", "height_cm": 170, "weight_kg": 70,
+        "chronic_conditions": ["Mild Hypertension"],
+        "allergies": ["None"],
+        "current_medications": ["Amlodipine 5mg"],
+        "family_history": ["Hypertension (Father)"],
+        "last_visit": "2026-02-20",
+        "vaccination_status": { "COVID-19": "Fully Vaccinated", "Flu": "2025 dose taken" },
+        "health_metrics": {"bp": "130/85 mmHg", "bmi": "24.2", "cholesterol": "180 mg/dL"},
+    }
 }
 
 
@@ -94,7 +107,15 @@ def _strip_sensitive(patient: dict) -> dict:
 
 @router.get("/")
 async def list_patients():
-    return {"patients": [_strip_sensitive(p) for p in SIMULATED_PATIENTS.values()], "total": len(SIMULATED_PATIENTS)}
+    return {
+        "status": "success",
+        "data": {
+            "patients": [_strip_sensitive(p) for p in SIMULATED_PATIENTS.values()],
+            "total": len(SIMULATED_PATIENTS)
+        },
+        "message": "Patients retrieved successfully",
+        "error_code": None
+    }
 
 
 @router.post("/login")
@@ -104,7 +125,7 @@ async def patient_login(body: PatientLoginRequest):
         raise HTTPException(status_code=404, detail="Patient not found. Please check your ABHA ID.")
     if patient["password"] != body.password:
         raise HTTPException(status_code=401, detail="Incorrect password. Please try again.")
-    return {"patient": _strip_sensitive(patient), "authenticated": True}
+    return {"status": "success", "data": {"patient": _strip_sensitive(patient), "authenticated": True}, "message": "Login successful", "error_code": None}
 
 
 @router.get("/{patient_id}/history")

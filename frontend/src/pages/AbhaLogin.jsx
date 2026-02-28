@@ -1,13 +1,16 @@
 import React, { useState } from 'react'
-import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ShieldCheck, Mic, Sparkles, Heart, Loader2, ArrowRight } from 'lucide-react'
+import api from '../api'
+import { API_ENDPOINTS } from '../config'
+import { useAppContext } from '../context/AppContext'
 
 const DEMO_PATIENTS = [
-    { name: 'Rajesh Kumar', abha: '1234-5678-9012', password: 'patient123', age: 58, cond: 'Diabetes, Hypertension', color: '#6366f1' },
-    { name: 'Priya Sharma', abha: '2345-6789-0123', password: 'patient123', age: 34, cond: 'Allergies, Vit D', color: '#14b8a6' },
-    { name: 'Amit Patel', abha: '3456-7890-1234', password: 'patient123', age: 62, cond: 'Cardiac, Lipids', color: '#f59e0b' },
-    { name: 'Sunita Devi', abha: '4567-8901-2345', password: 'patient123', age: 45, cond: 'Thyroid, GERD', color: '#f43f5e' },
-    { name: 'Mohammed K.', abha: '5678-9012-3456', password: 'patient123', age: 38, cond: 'Healthy', color: '#10b981' },
+    { name: 'Rajesh Kumar', abha: '1234-5678-9012', password: 'rajesh123', age: 58, cond: 'Diabetes, Hypertension', color: '#6366f1' },
+    { name: 'Priya Sharma', abha: '2345-6789-0123', password: 'priya234', age: 34, cond: 'Allergies, Vit D', color: '#14b8a6' },
+    { name: 'Amit Patel', abha: '3456-7890-1234', password: 'amit345', age: 62, cond: 'Cardiac, Lipids', color: '#f59e0b' },
+    { name: 'Sunita Devi', abha: '4567-8901-2345', password: 'sunita456', age: 45, cond: 'Thyroid, GERD', color: '#f43f5e' },
+    { name: 'Mohammed K.', abha: '5678-9012-3456', password: 'khalil567', age: 38, cond: 'Healthy', color: '#10b981' },
 ]
 
 const FEATURES = [
@@ -17,7 +20,10 @@ const FEATURES = [
     { icon: ShieldCheck, label: 'ABHA Secure', sub: '20% PMJAY discount' },
 ]
 
-export default function AbhaLogin({ onLogin, apiBase }) {
+export default function AbhaLogin() {
+    const navigate = useNavigate()
+    const { setPatient } = useAppContext()
+    
     const [abhaId, setAbhaId] = useState('')
     const [password, setPassword] = useState('')
     const [showPass, setShowPass] = useState(false)
@@ -29,10 +35,12 @@ export default function AbhaLogin({ onLogin, apiBase }) {
         if (!abhaId || !password) { setError('Please enter ABHA ID and password'); return }
         setLoading(true); setError('')
         try {
-            const res = await axios.post(`${apiBase}/patients/login`, { abha_id: abhaId.trim(), password })
-            onLogin(res.data.patient)
+            const res = await api.post(API_ENDPOINTS.AUTH_LOGIN, { abha_id: abhaId.trim(), password })
+            setPatient(res.data.patient)
+            localStorage.setItem('aushadhi_patient', JSON.stringify(res.data.patient))
+            navigate('/dashboard')
         } catch (err) {
-            setError(err.response?.data?.detail || 'Login failed. Check your credentials.')
+            setError(err.message || 'Login failed. Check your credentials.')
         } finally { setLoading(false) }
     }
 

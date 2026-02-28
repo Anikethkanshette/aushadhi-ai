@@ -217,7 +217,7 @@ def check_service_health(service_name: str, test_fn: Callable) -> bool:
     logger = logging.getLogger("aushadhi.health")
     try:
         result = test_fn()
-        logger.info(f"✓ {service_name} is healthy")
+        logger.info(f"[OK] {service_name} is healthy")
         return result
     except Exception as e:
         logger.warning(f"✗ {service_name} health check failed: {e}")
