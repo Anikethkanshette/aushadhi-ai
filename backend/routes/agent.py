@@ -29,6 +29,7 @@ async def chat(message: ChatMessage):
     result = await agent.process_message(
         message=message.message,
         patient_id=message.patient_id,
+        patient_name=message.patient_name,
         abha_id=message.abha_id,
         language=message.language,
         has_prescription=message.has_prescription,

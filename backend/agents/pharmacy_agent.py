@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from typing import Optional
 from dotenv import load_dotenv
 
@@ -132,6 +133,33 @@ def _check_welfare(abha_id: str, amount: float) -> str:
         return f"Eligible for 20% discount (saves ₹{data.get('discount_amount', 0)}). Final cart: ₹{data.get('final_amount', amount)}."
     return "Not eligible for automatic welfare discounts."
 
+
+def _resolve_medicine(query: str):
+    q = str(query or "").strip().lower()
+    if not q:
+        return None
+    meds = load_medicines()
+    exact = next(
+        (
+            m
+            for m in meds
+            if q == str(m.get("id", "")).lower()
+            or q == str(m.get("name", "")).lower()
+            or q == str(m.get("generic_name", "")).lower()
+        ),
+        None,
+    )
+    if exact:
+        return exact
+    return next(
+        (
+            m
+            for m in meds
+            if q in str(m.get("name", "")).lower() or q in str(m.get("generic_name", "")).lower()
+        ),
+        None,
+    )
+
 # Dispatch table
 TOOL_FN = {
     "search_medicine": _search_medicine,
@@ -212,6 +240,19 @@ GEMINI_TOOLS = [
                 required=["abha_id", "amount"],
             ),
         ),
+        genai_types.FunctionDeclaration(
+            name="place_order",
+            description="Place a medicine order for the logged-in patient after stock and prescription checks.",
+            parameters=genai_types.Schema(
+                type=genai_types.Type.OBJECT,
+                properties={
+                    "medicine_query": genai_types.Schema(type=genai_types.Type.STRING, description="Medicine name, generic name, or medicine ID"),
+                    "quantity": genai_types.Schema(type=genai_types.Type.INTEGER, description="Requested quantity"),
+                    "dosage_frequency": genai_types.Schema(type=genai_types.Type.STRING, description="Dosage instructions, e.g. twice daily"),
+                },
+                required=["medicine_query"],
+            ),
+        ),
     ]) if GEMINI_AVAILABLE else None
 ]
 
@@ -221,6 +262,8 @@ You delegate tasks to specialized sub-agents:
 - Use PrescriptionAgent tools for Rx checks.
 - Use DeliveryAgent for shipping estimates.
 - Use WelfareAgent for PMJAY checks.
+ - Use WelfareAgent for PMJAY checks.
+ - Use place_order tool when the user asks to buy/order/purchase medicine and has provided enough details.
 Always be friendly and professional. If a medicine is prescription-only, ask for Rx before proceeding.
 Respond concisely. Use ₹ for Indian Rupee prices."""
 
@@ -238,10 +281,90 @@ class PharmacyAgent:
                 self._client = genai.Client(api_key=api_key)
         return self._client
 
+    def _place_order_from_chat(
+        self,
+        medicine_query: str,
+        quantity: int,
+        dosage_frequency: str,
+        patient_id: Optional[str],
+        patient_name: Optional[str],
+        abha_id: Optional[str],
+        has_prescription: bool,
+    ) -> str:
+        if not patient_id or not abha_id:
+            return "Please login with your ABHA account before placing an order through AI Pharmacist."
+
+        med = _resolve_medicine(medicine_query)
+        if not med:
+            return f"I couldn't find '{medicine_query}' in inventory. Please share the exact medicine name."
+
+        try:
+            qty = int(quantity) if quantity is not None else 1
+        except Exception:
+            qty = 1
+        if qty < 1:
+            qty = 1
+
+        try:
+            from models import OrderCreate
+            from routes.orders import create_order
+
+            payload = OrderCreate(
+                patient_id=patient_id,
+                patient_name=patient_name or patient_id,
+                abha_id=abha_id,
+                medicine_id=str(med.get("id")),
+                medicine_name=str(med.get("name")),
+                quantity=qty,
+                dosage_frequency=dosage_frequency or "As directed",
+                has_prescription=bool(has_prescription),
+            )
+            result = create_order(payload)
+            order = result.get("data", {}).get("order", {})
+            order_id = order.get("order_id", "")
+            amount = order.get("total_amount", "")
+            delivery = result.get("data", {}).get("delivery", {})
+            eta = delivery.get("estimated_delivery", "")
+            return (
+                f"Order placed successfully. Order ID: {order_id}. "
+                f"Medicine: {order.get('medicine_name', med.get('name'))} x{order.get('quantity', qty)}. "
+                f"Total: ₹{amount}. "
+                f"Estimated delivery: {eta}."
+            )
+        except Exception as e:
+            return f"Unable to place order right now: {str(e)}"
+
+    def _infer_order_request(self, message: str):
+        text = str(message or "")
+        lower = text.lower()
+
+        qty_match = re.search(r"\b(\d{1,3})\s*(x|units?|tablets?|capsules?)?\b", lower)
+        quantity = int(qty_match.group(1)) if qty_match else 1
+
+        matched = None
+        for med in load_medicines():
+            name = str(med.get("name", "")).lower()
+            generic = str(med.get("generic_name", "")).lower()
+            if name and name in lower:
+                matched = med
+                break
+            if generic and generic in lower:
+                matched = med
+                break
+
+        if matched:
+            return {
+                "medicine_query": matched.get("name"),
+                "quantity": quantity,
+                "dosage_frequency": "As directed",
+            }
+        return None
+
     async def process_message(
         self,
         message: str,
         patient_id: Optional[str] = None,
+        patient_name: Optional[str] = None,
         abha_id: Optional[str] = None,
         language: str = "en-IN",
         has_prescription: bool = False,
@@ -270,6 +393,39 @@ class PharmacyAgent:
         if intent == "regulatory_policy":
             trace.append("Routing to PolicyAgent")
             return await self._policy_agent.process_message(message)
+
+        if intent == "purchase":
+            inferred_order = self._infer_order_request(message)
+            if inferred_order:
+                trace.append("Direct order inference for purchase intent")
+                order_result = self._place_order_from_chat(
+                    medicine_query=inferred_order["medicine_query"],
+                    quantity=inferred_order["quantity"],
+                    dosage_frequency=inferred_order["dosage_frequency"],
+                    patient_id=patient_id,
+                    patient_name=patient_name,
+                    abha_id=abha_id,
+                    has_prescription=has_prescription,
+                )
+                if order_result.startswith("Order placed successfully"):
+                    med = _resolve_medicine(inferred_order["medicine_query"])
+                    if med:
+                        medicines_found.append({
+                            "id": med["id"],
+                            "name": med["name"],
+                            "price": med["price"],
+                            "available": int(med["stock_quantity"]) > 0,
+                            "prescription_required": med["prescription_required"],
+                        })
+                    return {
+                        "response": order_result,
+                        "intent": intent,
+                        "medicines_found": medicines_found[:5],
+                        "action_taken": "AI pharmacist order placement",
+                        "welfare_eligible": bool(abha_id),
+                        "agent_trace": trace,
+                    }
+                trace.append("Direct order inference failed, falling back to agent response")
 
         # Langfuse trace
         lf_root_span = None
@@ -328,7 +484,21 @@ class PharmacyAgent:
                         fn = part.function_call
                         tool_name = fn.name
                         tool_args = dict(fn.args) if fn.args else {}
-                        result = TOOL_FN.get(tool_name, lambda **k: "Tool not found")(**tool_args)
+                        if tool_name == "check_prescription":
+                            tool_args.setdefault("abha_id", abha_id or "anonymous")
+                            tool_args.setdefault("has_rx", bool(has_prescription))
+                        if tool_name == "place_order":
+                            result = self._place_order_from_chat(
+                                medicine_query=tool_args.get("medicine_query", ""),
+                                quantity=tool_args.get("quantity", 1),
+                                dosage_frequency=tool_args.get("dosage_frequency", "As directed"),
+                                patient_id=patient_id,
+                                patient_name=patient_name,
+                                abha_id=abha_id,
+                                has_prescription=has_prescription,
+                            )
+                        else:
+                            result = TOOL_FN.get(tool_name, lambda **k: "Tool not found")(**tool_args)
                         tool_calls_made.append(f"{tool_name}({tool_args}) → {result[:80]}")
                         trace.append(f"Tool: {tool_name}")
                         tool_results.append(genai_types.Part(

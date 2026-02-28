@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import axios from 'axios'
 import {
     Search, Pill, AlertTriangle, CheckCircle, ShoppingCart,
     Filter, X, Loader2, Package, Sparkles, CreditCard,
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react'
 import api from '../api'
 import { API_ENDPOINTS } from '../config'
+import { API_CONFIG } from '../config'
 import { useAppContext } from '../context/AppContext'
 
 export default function MedicineSearch() {
@@ -32,6 +34,10 @@ export default function MedicineSearch() {
     const [checkoutResult, setCheckoutResult] = useState(null)
     const [checkoutError, setCheckoutError] = useState('')
     const [prescriptionFile, setPrescriptionFile] = useState(null)
+    const [rxScanLoading, setRxScanLoading] = useState(false)
+    const [rxScanError, setRxScanError] = useState('')
+    const [rxScanSummary, setRxScanSummary] = useState('')
+    const [rxScanMatched, setRxScanMatched] = useState(false)
 
     const [cart, setCart] = useState([])
     const [showCart, setShowCart] = useState(false)
@@ -100,7 +106,49 @@ export default function MedicineSearch() {
         setCheckoutState('idle')
         setCheckoutResult(null)
         setCheckoutError('')
+        setRxScanLoading(false)
+        setRxScanError('')
+        setRxScanSummary('')
+        setRxScanMatched(false)
         loadRecommendations(med.id)
+    }
+
+    const scanPrescription = async (file, medicine) => {
+        if (!file || !medicine) return
+        setRxScanLoading(true)
+        setRxScanError('')
+        setRxScanSummary('')
+        setRxScanMatched(false)
+        try {
+            const formData = new FormData()
+            formData.append('image', file)
+            const res = await axios.post(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AGENT_SCAN}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 45000,
+            })
+            const scanned = res?.data?.medicines || []
+            const nameWords = String(medicine.name || '').toLowerCase().split(/\s+/).filter(Boolean)
+            const matched = scanned.find(item => {
+                const matchedMedicineId = String(item?.matched_medicine?.id || '')
+                const extracted = String(item?.extracted_name || '').toLowerCase()
+                const nameMatch = nameWords.some(w => w.length > 3 && extracted.includes(w))
+                return matchedMedicineId === String(medicine.id) || nameMatch
+            })
+
+            if (!matched) {
+                setRxScanError('Prescription scanned, but selected medicine was not clearly matched. Please upload a clearer prescription.')
+                return
+            }
+
+            const summary = `Matched ${matched.extracted_name}${matched.dosage ? ` (${matched.dosage})` : ''}`
+            setRxScanSummary(summary)
+            setRxScanMatched(true)
+            setHasRx(true)
+        } catch (error) {
+            setRxScanError(error?.response?.data?.detail || 'Unable to scan prescription. Please try again.')
+        } finally {
+            setRxScanLoading(false)
+        }
     }
 
     const loadRecommendations = async (medicineId) => {
@@ -124,6 +172,16 @@ export default function MedicineSearch() {
             setCheckoutError('Prescription confirmation is required for this medicine.')
             return
         }
+        if (isRx(checkoutMed) && !prescriptionFile) {
+            setCheckoutState('error')
+            setCheckoutError('Please upload prescription for this medicine before checkout.')
+            return
+        }
+        if (isRx(checkoutMed) && !rxScanMatched) {
+            setCheckoutState('error')
+            setCheckoutError('Prescription must be OCR-verified for this medicine.')
+            return
+        }
         setCheckoutState('processing')
         setCheckoutError('')
         try {
@@ -136,6 +194,9 @@ export default function MedicineSearch() {
                 quantity: parseInt(quantity, 10),
                 dosage_frequency: 'As directed',
                 has_prescription: hasRx,
+                prescription_file_name: prescriptionFile?.name || '',
+                prescription_scan_summary: rxScanSummary || '',
+                prescription_verified: rxScanMatched,
             })
             setCheckoutResult(res.data)
             setCheckoutState('success')
@@ -522,19 +583,35 @@ export default function MedicineSearch() {
                                                         <span className="text-slate-300 text-sm">I have a valid prescription</span>
                                                     </label>
                                                     <div className="mt-3">
-                                                        <label className="block text-[11px] text-slate-500 mb-1">Upload prescription (optional for records)</label>
+                                                        <label className="block text-[11px] text-slate-500 mb-1">Upload prescription (required)</label>
                                                         <input
                                                             type="file"
                                                             accept="image/*,.pdf"
                                                             onChange={e => {
                                                                 const file = e.target.files?.[0] || null
                                                                 setPrescriptionFile(file)
-                                                                if (file) setHasRx(true)
+                                                                if (file) {
+                                                                    setHasRx(true)
+                                                                    scanPrescription(file, checkoutMed)
+                                                                }
+                                                                if (!file) {
+                                                                    setRxScanMatched(false)
+                                                                    setRxScanSummary('')
+                                                                }
                                                             }}
                                                             className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:text-indigo-300"
                                                         />
                                                         {prescriptionFile && (
                                                             <p className="text-[11px] text-emerald-400 mt-1">Attached: {prescriptionFile.name}</p>
+                                                        )}
+                                                        {rxScanLoading && (
+                                                            <p className="text-[11px] text-indigo-300 mt-1">Scanning prescription…</p>
+                                                        )}
+                                                        {rxScanSummary && (
+                                                            <p className="text-[11px] text-emerald-400 mt-1">OCR: {rxScanSummary}</p>
+                                                        )}
+                                                        {rxScanError && (
+                                                            <p className="text-[11px] text-red-400 mt-1">{rxScanError}</p>
                                                         )}
                                                     </div>
                                                 </div>

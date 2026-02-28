@@ -36,6 +36,10 @@ export const API_ENDPOINTS = {
   PATIENTS_NOTIFICATIONS: (patientId) => `/patients/${patientId}/notifications`,
   PATIENTS_NOTIF_MARK_READ: (abhaId, notificationId) => `/patients/${abhaId}/notifications/${notificationId}/read`,
   PATIENTS_NOTIF_MARK_ALL: (abhaId) => `/patients/${abhaId}/notifications/read-all`,
+  PATIENTS_AUTO_REFILL: '/patients/auto-refill',
+  PATIENTS_AUTO_REFILL_SUBSCRIBE: '/patients/auto-refill/subscribe',
+  PATIENTS_AUTO_REFILL_SUBSCRIPTIONS: (abhaId) => `/patients/${abhaId}/auto-refill/subscriptions`,
+  PATIENTS_AUTO_REFILL_CANCEL: (abhaId, subscriptionId) => `/patients/${abhaId}/auto-refill/subscriptions/${subscriptionId}`,
   
   // Agent
   AGENT_CHAT: '/agent/chat',

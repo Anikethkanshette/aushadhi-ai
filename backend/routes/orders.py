@@ -90,7 +90,11 @@ def create_order(order: OrderCreate):
         "next_refill_date": str(next_refill),
         "total_amount": str(final_amount),
         "status": "completed",
-        "tx_id": tx_id
+        "tx_id": tx_id,
+        "has_prescription": bool(order.has_prescription),
+        "prescription_file_name": order.prescription_file_name or "",
+        "prescription_scan_summary": order.prescription_scan_summary or "",
+        "prescription_verified": bool(order.prescription_verified),
     }
 
     save_order(new_order)

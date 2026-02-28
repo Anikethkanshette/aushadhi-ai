@@ -144,6 +144,7 @@ export default function ChatPage({ patient, apiBase }) {
             const res = await axios.post(`${apiBase}/agent/chat`, {
                 message: text,
                 patient_id: patient?.patient_id,
+                patient_name: patient?.name,
                 abha_id: patient?.abha_id,
                 language: lang,
                 has_prescription: hasPrescription,

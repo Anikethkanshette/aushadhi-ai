@@ -178,12 +178,16 @@ export default function PharmacistDashboard() {
 
         const load = async () => {
             try {
-                const [sres, pres, nres] = await Promise.all([
+                const [sres, pres, nres, rres] = await Promise.all([
                     api.get('/pharmacist/stats'),
                     api.get('/patients/'),
                     api.get('/pharmacist/notifications'),
+                    api.get('/patients/refill-alerts'),
                 ])
-                setStats(sres.data)
+                setStats({
+                    ...sres.data,
+                    refill_due_count: rres.data?.total || 0,
+                })
                 setPatients(pres.data.patients || [])
                 setNotifCount((nres.data.notifications || []).length)
             } catch { }
@@ -209,7 +213,12 @@ export default function PharmacistDashboard() {
         { path: '/pharmacist/exports', icon: FileSpreadsheet, label: 'Export Data', accent: '#10b981' },
     ]
 
-    const topBar = { pending: stats?.pending_orders ?? 0, lowstock: stats?.low_stock_alerts ?? 0, revenue: stats?.monthly_revenue?.slice(-1)[0] ?? 0 }
+    const topBar = {
+        pending: stats?.pending_orders ?? 0,
+        lowstock: stats?.low_stock_alerts ?? 0,
+        refillDue: stats?.refill_due_count ?? 0,
+        revenue: stats?.monthly_revenue?.slice(-1)[0] ?? 0,
+    }
 
     return (
         <div className="flex h-screen" style={{ background: 'var(--c-bg)' }}>
@@ -292,6 +301,12 @@ export default function PharmacistDashboard() {
                             <div className="flex items-center gap-1.5 text-red-400 text-xs font-semibold px-3 py-1.5 rounded-lg"
                                 style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.18)' }}>
                                 <AlertTriangle className="w-3.5 h-3.5" /> {topBar.lowstock} Low Stock
+                            </div>
+                        )}
+                        {topBar.refillDue > 0 && (
+                            <div className="flex items-center gap-1.5 text-indigo-300 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                                style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                                <Clock className="w-3.5 h-3.5" /> {topBar.refillDue} Refill Due
                             </div>
                         )}
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg"

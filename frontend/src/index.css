@@ -241,6 +241,35 @@
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
   }
 
+  .input-field {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    color: #e2e8f0;
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    appearance: none;
+  }
+
+  .input-field::placeholder {
+    color: #94a3b8;
+  }
+
+  .input-field:focus {
+    border-color: rgba(99, 102, 241, 0.55);
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  }
+
+  .input-field option {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+
   /* ── Badges ──────────────────────────────────────────────────── */
   .badge {
     display: inline-flex;
