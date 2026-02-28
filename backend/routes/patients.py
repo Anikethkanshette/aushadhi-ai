@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 import os
+from database import mark_notification_read, mark_all_notifications_read
 
 try:
     from google import genai
@@ -216,7 +217,27 @@ async def get_refill_alerts():
 
 
 @router.get("/{abha_id}/notifications")
-async def get_notifications(abha_id: str):
+async def get_notifications(abha_id: str, read: Optional[bool] = None, notif_type: Optional[str] = None):
     notifs = get_patient_notifications(abha_id=abha_id)
+    if read is not None:
+        notifs = [n for n in notifs if bool(n.get("read", False)) == read]
+    if notif_type:
+        notifs = [n for n in notifs if str(n.get("type", "")).lower() == notif_type.lower()]
     unread_count = sum(1 for n in notifs if not n.get("read"))
     return {"notifications": notifs, "total": len(notifs), "unread": unread_count}
+
+
+@router.patch("/{abha_id}/notifications/{notification_id}/read")
+async def mark_one_notification_read(abha_id: str, notification_id: str, body: Optional[dict] = None):
+    body = body or {}
+    read_value = bool(body.get("read", True))
+    updated = mark_notification_read(notification_id, read=read_value, abha_id=abha_id)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"status": "success", "message": "Notification updated", "data": {"notification_id": notification_id, "read": read_value}}
+
+
+@router.patch("/{abha_id}/notifications/read-all")
+async def mark_all_notifications(abha_id: str):
+    updated_count = mark_all_notifications_read(abha_id=abha_id)
+    return {"status": "success", "message": "Notifications updated", "data": {"updated_count": updated_count}}

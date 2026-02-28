@@ -19,6 +19,7 @@ export default function Dashboard() {
     const [notifications, setNotifications] = useState([])
     const [showNotifs, setShowNotifs] = useState(false)
     const [profile, setProfile] = useState(null)
+    const [notifFilter, setNotifFilter] = useState('all')
 
     useEffect(() => {
         if (!patient) {
@@ -31,9 +32,9 @@ export default function Dashboard() {
             .then(r => setProfile(r.data))
             .catch(() => { })
 
-        // Fetch pharmacist notifications for this patient
+        // Fetch patient notifications
         const fetchNotifs = () => {
-            api.get(`/pharmacist/patient-notifications/${patient?.patient_id || ''}`)
+            api.get(`/patients/${patient?.abha_id}/notifications`)
                 .then(r => setNotifications(r.data.notifications || []))
                 .catch(() => { })
         }
@@ -56,7 +57,24 @@ export default function Dashboard() {
         { path: '/dashboard/chat', icon: MessageSquare, label: 'AI Pharmacist', accent: '#14b8a6' },
     ]
 
-    const unread = notifications.length
+    const unread = notifications.filter(n => !n.read).length
+    const visibleNotifications = notifFilter === 'all'
+        ? notifications
+        : notifications.filter(n => notifFilter === 'unread' ? !n.read : n.type === notifFilter)
+
+    const markOneRead = async (notificationId, read) => {
+        try {
+            await api.patch(API_ENDPOINTS.PATIENTS_NOTIF_MARK_READ(patient?.abha_id, notificationId), { read })
+            setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read } : n))
+        } catch { }
+    }
+
+    const markAllRead = async () => {
+        try {
+            await api.patch(API_ENDPOINTS.PATIENTS_NOTIF_MARK_ALL(patient?.abha_id))
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        } catch { }
+    }
 
     return (
         <div className="flex h-screen" style={{ background: 'var(--c-bg)' }}>
@@ -164,15 +182,29 @@ export default function Dashboard() {
                                 <div className="absolute right-0 top-11 w-80 glass z-50 overflow-hidden shadow-2xl anim-appear">
                                     <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
                                         <p className="text-white font-bold text-sm">Pharmacy Notifications</p>
-                                        <button onClick={() => setShowNotifs(false)} className="text-slate-600 hover:text-white text-xs">✕</button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={markAllRead} className="text-[10px] text-indigo-400 hover:text-white">Mark all read</button>
+                                            <button onClick={() => setShowNotifs(false)} className="text-slate-600 hover:text-white text-xs">✕</button>
+                                        </div>
                                     </div>
-                                    {notifications.length === 0 ? (
+                                    <div className="px-3 py-2 border-b border-white/5 flex gap-2">
+                                        {['all', 'unread', 'refill', 'alert', 'general'].map(f => (
+                                            <button
+                                                key={f}
+                                                onClick={() => setNotifFilter(f)}
+                                                className={`text-[10px] px-2 py-1 rounded-lg transition-all ${notifFilter === f ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-transparent'}`}
+                                            >
+                                                {f}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {visibleNotifications.length === 0 ? (
                                         <div className="py-8 text-center">
                                             <Bell className="w-8 h-8 mx-auto text-slate-700 mb-2" />
                                             <p className="text-slate-600 text-sm">No notifications yet</p>
                                         </div>
-                                    ) : notifications.map(n => (
-                                        <div key={n.id} className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
+                                    ) : visibleNotifications.map(n => (
+                                        <div key={n.id} className={`px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors ${n.read ? 'opacity-70' : ''}`}>
                                             <div className="flex items-start gap-3">
                                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
                                                     style={{ background: n.type === 'alert' ? 'rgba(244,63,94,0.15)' : n.type === 'refill' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)' }}>
@@ -182,6 +214,12 @@ export default function Dashboard() {
                                                     <p className="text-slate-300 text-xs font-semibold">{n.subject || 'Message from Pharmacist'}</p>
                                                     <p className="text-slate-500 text-[11px] mt-0.5 leading-relaxed">{n.enhanced || n.message}</p>
                                                     <p className="text-slate-700 text-[10px] mt-1">{n.sent_at}</p>
+                                                    <button
+                                                        onClick={() => markOneRead(n.id, !n.read)}
+                                                        className="text-[10px] text-indigo-400 hover:text-white mt-1"
+                                                    >
+                                                        {n.read ? 'Mark unread' : 'Mark read'}
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

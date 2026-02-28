@@ -20,6 +20,7 @@ export const API_ENDPOINTS = {
   // Medicines
   MEDICINES_LIST: '/medicines/',
   MEDICINES_SEARCH: '/medicines/search/alternatives',
+  MEDICINES_RECOMMENDATIONS: (id) => `/medicines/recommendations/${id}`,
   MEDICINES_GET: (id) => `/medicines/${id}`,
   MEDICINES_UPDATE: (id) => `/medicines/${id}/inventory`,
   
@@ -28,10 +29,13 @@ export const API_ENDPOINTS = {
   ORDERS_GET: (id) => `/orders/${id}`,
   ORDERS_LIST: (patientId) => `/orders/?patient_id=${patientId}`,
   ORDERS_UPDATE_STATUS: (id) => `/orders/${id}/status`,
+  ORDERS_CANCEL: (id) => `/orders/${id}/cancel`,
   
   // Patients
   PATIENTS_PROFILE: (abhaId) => `/patients/abha/${abhaId}/profile`,
   PATIENTS_NOTIFICATIONS: (patientId) => `/patients/${patientId}/notifications`,
+  PATIENTS_NOTIF_MARK_READ: (abhaId, notificationId) => `/patients/${abhaId}/notifications/${notificationId}/read`,
+  PATIENTS_NOTIF_MARK_ALL: (abhaId) => `/patients/${abhaId}/notifications/read-all`,
   
   // Agent
   AGENT_CHAT: '/agent/chat',
@@ -42,6 +46,7 @@ export const API_ENDPOINTS = {
   // Pharmacist
   PHARMACIST_STATS: '/pharmacist/stats',
   PHARMACIST_ORDERS: '/pharmacist/orders',
+  PHARMACIST_ORDERS_BULK_STATUS: '/pharmacist/orders/bulk-status',
   PHARMACIST_INVENTORY: '/pharmacist/inventory',
   PHARMACIST_NOTIFICATIONS: '/pharmacist/patient-notifications',
   

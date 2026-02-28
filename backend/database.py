@@ -568,6 +568,93 @@ def get_patient_notifications(patient_id: str = None, abha_id: str = None) -> Li
         return []
 
 
+def mark_notification_read(notification_id: str, read: bool = True, patient_id: str = None, abha_id: str = None) -> bool:
+    """
+    Update read/unread state for a single notification.
+
+    Args:
+        notification_id: Notification identifier
+        read: Target read value
+        patient_id: Optional patient id ownership check
+        abha_id: Optional abha ownership check
+
+    Returns:
+        bool: True when a notification was updated
+    """
+    global _notifications_cache, _notifications_cache_time
+
+    if not notification_id:
+        raise DataValidationError("notification_id is required")
+
+    with _notification_cache_lock:
+        try:
+            notifs = load_notifications()
+            updated = False
+
+            for notif in notifs:
+                if notif.get("id") != notification_id:
+                    continue
+                if patient_id and notif.get("patient_id") not in (patient_id, ""):
+                    continue
+                if abha_id and notif.get("abha_id") not in (abha_id, None, ""):
+                    continue
+
+                notif["read"] = bool(read)
+                notif["updated_at"] = datetime.utcnow().isoformat()
+                updated = True
+                break
+
+            if not updated:
+                return False
+
+            filepath = os.path.join(DATA_DIR, "notifications.json")
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(notifs, f, indent=2)
+
+            _notifications_cache = notifs
+            _notifications_cache_time = time.time()
+            return True
+        except Exception as e:
+            logger.error(f"Error updating notification read state: {e}")
+            raise DatabaseError(f"Failed to update notification state: {str(e)}")
+
+
+def mark_all_notifications_read(patient_id: str = None, abha_id: str = None) -> int:
+    """
+    Mark all matching notifications as read.
+
+    Returns:
+        int: Number of notifications updated
+    """
+    global _notifications_cache, _notifications_cache_time
+
+    with _notification_cache_lock:
+        try:
+            notifs = load_notifications()
+            updated_count = 0
+
+            for notif in notifs:
+                matches_patient = (not patient_id) or (notif.get("patient_id") in (patient_id, ""))
+                matches_abha = (not abha_id) or (notif.get("abha_id") in (abha_id, None, ""))
+                if matches_patient and matches_abha and not notif.get("read", False):
+                    notif["read"] = True
+                    notif["updated_at"] = datetime.utcnow().isoformat()
+                    updated_count += 1
+
+            if updated_count > 0:
+                filepath = os.path.join(DATA_DIR, "notifications.json")
+                with open(filepath, "w", encoding="utf-8") as f:
+                    json.dump(notifs, f, indent=2)
+
+                _notifications_cache = notifs
+                _notifications_cache_time = time.time()
+
+            return updated_count
+        except Exception as e:
+            logger.error(f"Error marking all notifications as read: {e}")
+            raise DatabaseError(f"Failed to mark notifications as read: {str(e)}")
+
+
 def invalidate_cache():
     """Invalidate all caches to force reload from files."""
     global _medicines_cache, _orders_cache, _notifications_cache

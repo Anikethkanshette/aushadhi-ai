@@ -104,7 +104,7 @@ def get_pharmacist_orders():
 
 @router.put("/orders/{order_id}/status")
 def update_status(order_id: str, status: str):
-    valid_statuses = ["pending", "approved", "fulfilled", "rejected", "completed"]
+    valid_statuses = ["pending", "approved", "fulfilled", "rejected", "completed", "cancelled"]
     if status.lower() not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid status")
         
@@ -137,6 +137,41 @@ def update_status(order_id: str, status: str):
         "data": {"message": "Status updated"},
         "message": "Status updated successfully",
         "error_code": None
+    }
+
+
+@router.put("/orders/bulk-status")
+def bulk_update_status(body: dict):
+    order_ids = body.get("order_ids", [])
+    target_status = str(body.get("status", "")).lower()
+    valid_statuses = ["pending", "approved", "fulfilled", "rejected", "completed", "cancelled"]
+
+    if not isinstance(order_ids, list) or len(order_ids) == 0:
+        raise HTTPException(status_code=400, detail="order_ids list is required")
+    if target_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid target status")
+
+    updated = []
+    not_found = []
+    for order_id in order_ids:
+        try:
+            success = update_order_status(order_id, target_status)
+            if success:
+                updated.append(order_id)
+            else:
+                not_found.append(order_id)
+        except Exception:
+            not_found.append(order_id)
+
+    return {
+        "status": "success",
+        "data": {
+            "updated": updated,
+            "not_found": not_found,
+            "updated_count": len(updated),
+        },
+        "message": "Bulk status update completed",
+        "error_code": None,
     }
 
 @router.get("/inventory")
@@ -250,12 +285,17 @@ def notify_patient(body: dict):
 
 
 @router.get("/notifications")
-def get_notifications():
+def get_notifications(notif_type: str = None, read: bool = None):
     """Get all sent notifications (pharmacist view)."""
+    notifications = list(reversed(_NOTIFICATIONS))
+    if notif_type:
+        notifications = [n for n in notifications if str(n.get("type", "")).lower() == notif_type.lower()]
+    if read is not None:
+        notifications = [n for n in notifications if bool(n.get("read", False)) == read]
     return {
         "status": "success",
         "data": {
-            "notifications": list(reversed(_NOTIFICATIONS))
+            "notifications": notifications
         },
         "message": "Notifications retrieved successfully",
         "error_code": None
