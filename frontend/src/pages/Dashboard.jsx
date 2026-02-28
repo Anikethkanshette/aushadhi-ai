@@ -1,194 +1,194 @@
-import React, { useState, useEffect } from 'react'
-import { Routes, Route, NavLink } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom'
 import {
-    MessageSquare, Search, ClipboardList, LayoutDashboard,
-    LogOut, User, Bell, Pill, Menu, X
+    Heart, LayoutDashboard, Pill, ClipboardList, MessageSquare,
+    LogOut, Bell, ChevronRight, Activity, Zap
 } from 'lucide-react'
-import ChatPage from './ChatPage'
+import axios from 'axios'
+import DashboardHome from './DashboardHome'
 import MedicineSearch from './MedicineSearch'
 import OrderHistory from './OrderHistory'
-import DashboardHome from './DashboardHome'
-import axios from 'axios'
+import ChatPage from './ChatPage'
 
 export default function Dashboard({ patient, onLogout, apiBase }) {
-    const [sidebarOpen, setSidebarOpen] = useState(false)
+    const location = useLocation()
     const [notifications, setNotifications] = useState([])
-    const [unreadCount, setUnreadCount] = useState(0)
     const [showNotifs, setShowNotifs] = useState(false)
+    const [profile, setProfile] = useState(null)
 
     useEffect(() => {
-        if (!patient?.abha_id) return
+        // Fetch patient profile
+        axios.get(`${apiBase}/patients/abha/${patient?.abha_id}/profile`)
+            .then(r => setProfile(r.data))
+            .catch(() => { })
 
-        const fetchNotifs = async () => {
-            try {
-                const res = await axios.get(`${apiBase}/patients/${patient.abha_id}/notifications`)
-                setNotifications(res.data.notifications)
-                setUnreadCount(res.data.unread)
-            } catch (e) { console.error('Error fetching notifications', e) }
+        // Fetch pharmacist notifications for this patient
+        const fetchNotifs = () => {
+            axios.get(`${apiBase}/pharmacist/patient-notifications/${patient?.patient_id || ''}`)
+                .then(r => setNotifications(r.data.notifications || []))
+                .catch(() => { })
         }
-
         fetchNotifs()
-        const intervalId = setInterval(fetchNotifs, 10000)
-        return () => clearInterval(intervalId)
-    }, [patient, apiBase])
+        const id = setInterval(fetchNotifs, 20000)
+        return () => clearInterval(id)
+    }, [apiBase, patient])
 
-    if (!patient) return null;
-
-    const navItems = [
-        { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', end: true },
-        { to: '/dashboard/chat', icon: MessageSquare, label: 'AI Pharmacist' },
-        { to: '/dashboard/medicines', icon: Search, label: 'Medicines' },
-        { to: '/dashboard/orders', icon: ClipboardList, label: 'My Orders' },
+    const nav = [
+        { path: '/dashboard/home', icon: LayoutDashboard, label: 'Overview', accent: '#6366f1' },
+        { path: '/dashboard/medicines', icon: Pill, label: 'Medicines', accent: '#10b981' },
+        { path: '/dashboard/orders', icon: ClipboardList, label: 'My Orders', accent: '#f59e0b' },
+        { path: '/dashboard/chat', icon: MessageSquare, label: 'AI Pharmacist', accent: '#14b8a6' },
     ]
 
+    const unread = notifications.length
+
     return (
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen" style={{ background: 'var(--c-bg)' }}>
             {/* Sidebar */}
-            <aside
-                className={`fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border transform transition-transform duration-300 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
-            >
+            <aside className="w-[220px] flex-shrink-0 flex flex-col sidebar">
                 {/* Logo */}
-                <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center">
-                        <Pill className="w-5 h-5 text-white" />
+                <div className="px-5 py-5 border-b border-white/5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #4f46e5, #818cf8)', boxShadow: '0 0 16px rgba(99,102,241,0.35)' }}>
+                        <Heart className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-lg font-bold text-white">Aushadhi<span className="text-indigo-400">AI</span></span>
+                    <div>
+                        <p className="text-white font-black text-sm tracking-tight">Aushadhi<span className="text-gradient">AI</span></p>
+                        <p className="text-[9px] text-indigo-400/70 uppercase tracking-widest font-bold">Patient Portal</p>
+                    </div>
                 </div>
 
                 {/* Patient card */}
-                <div className="mx-4 mt-4 glass-card p-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            {patient.name?.charAt(0) || 'P'}
+                <div className="mx-3 mt-4 p-3.5 rounded-xl border border-white/7"
+                    style={{ background: 'rgba(99,102,241,0.07)' }}>
+                    <div className="flex items-center gap-2.5 mb-2">
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #4f46e5, #8b5cf6)' }}>
+                            {patient?.name?.[0]}
                         </div>
                         <div className="min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{patient.name}</p>
-                            <p className="text-xs text-slate-400 font-mono truncate">ABHA: {patient.abha_id}</p>
+                            <p className="text-white text-sm font-bold truncate">{patient?.name}</p>
+                            <p className="text-[9px] text-slate-600 font-mono">{patient?.abha_id}</p>
                         </div>
                     </div>
-                    {patient.chronic_conditions?.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1">
-                            {patient.chronic_conditions.slice(0, 2).map(c => (
-                                <span key={c} className="badge badge-blue text-[10px] px-2 py-0.5">{c}</span>
-                            ))}
-                        </div>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                        {profile?.blood_group && (
+                            <span className="badge badge-red text-[9px]">{profile.blood_group}</span>
+                        )}
+                        {profile?.age && (
+                            <span className="badge badge-indigo text-[9px]">{profile.age}y</span>
+                        )}
+                        {profile?.chronic_conditions?.slice(0, 1).map(c => (
+                            <span key={c} className="badge badge-amber text-[9px]">{c}</span>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Nav */}
-                <nav className="px-4 mt-6 space-y-1">
-                    {navItems.map(({ to, icon: Icon, label, end }) => (
-                        <NavLink
-                            key={to}
-                            to={to}
-                            end={end}
-                            className={({ isActive }) =>
-                                `flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-150 ${isActive
-                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                                }`
-                            }
-                            onClick={() => setSidebarOpen(false)}
-                        >
-                            <Icon className="w-5 h-5 flex-shrink-0" />
-                            {label}
-                        </NavLink>
-                    ))}
+                <nav className="flex-1 p-3 space-y-0.5 mt-2 scroll overflow-y-auto">
+                    {nav.map(({ path, icon: Icon, label, accent }) => {
+                        const active = location.pathname.startsWith(path)
+                        return (
+                            <Link key={path} to={path}
+                                className={`nav-item ${active ? 'active' : ''}`}
+                                style={active ? { borderColor: `${accent}35`, background: `${accent}14` } : {}}>
+                                <div className="icon-pill"
+                                    style={{ background: active ? `${accent}25` : 'rgba(255,255,255,0.04)' }}>
+                                    <Icon className="w-4 h-4" style={{ color: active ? accent : '#475569' }} />
+                                </div>
+                                {label}
+                            </Link>
+                        )
+                    })}
                 </nav>
 
-                {/* Bottom logout */}
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <button
-                        id="logout-btn"
-                        onClick={onLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 font-medium text-sm transition-all duration-150"
-                    >
-                        <LogOut className="w-5 h-5" />
+                {/* Footer */}
+                <div className="p-3 border-t border-white/5 space-y-1">
+                    <div className="px-3 py-2 rounded-xl flex items-center gap-2"
+                        style={{ background: 'rgba(255,255,255,0.03)' }}>
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 anim-pulse" />
+                        <span className="text-[10px] text-slate-600 font-semibold">AI Agents Online</span>
+                        <Activity className="w-3 h-3 text-emerald-500/50 ml-auto" />
+                    </div>
+                    <button onClick={onLogout}
+                        className="nav-item w-full text-left hover:text-red-400">
+                        <div className="icon-pill" style={{ background: 'rgba(244,63,94,0.08)' }}>
+                            <LogOut className="w-4 h-4 text-red-500/60" />
+                        </div>
                         Sign Out
                     </button>
                 </div>
             </aside>
 
-            {/* Overlay for mobile */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 z-30 bg-black/60 lg:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
-
-            {/* Main content */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top bar */}
-                <header className="flex items-center gap-4 px-6 py-4 bg-card border-b border-border flex-shrink-0">
-                    <button className="lg:hidden text-slate-400 hover:text-white" onClick={() => setSidebarOpen(!sidebarOpen)}>
-                        {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                    </button>
-                    <div className="flex-1" />
-                    <span className="badge badge-green hide-on-mobile">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-slow" />
-                        AI Online
-                    </span>
-
-                    {/* Notification Bell */}
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowNotifs(!showNotifs)}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl relative transition-colors"
-                        >
-                            <Bell className="w-5 h-5" />
-                            {unreadCount > 0 && (
-                                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-card" />
-                            )}
-                        </button>
-
-                        {/* Dropdown */}
-                        {showNotifs && (
-                            <div className="absolute top-full right-0 mt-2 w-80 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-50">
-                                <div className="p-4 border-b border-border flex justify-between items-center bg-white/5">
-                                    <h4 className="font-semibold text-white">Notifications</h4>
-                                    {unreadCount > 0 && (
-                                        <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                                            {unreadCount} New
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
-                                    {notifications.length === 0 ? (
-                                        <div className="p-6 text-center text-slate-500 text-sm">No new notifications</div>
-                                    ) : (
-                                        <div className="divide-y divide-border">
-                                            {notifications.map(n => (
-                                                <div key={n.id} className={`p-4 hover:bg-white/5 transition-colors ${!n.read ? 'bg-indigo-500/5' : ''}`}>
-                                                    <div className="flex justify-between items-start mb-1">
-                                                        <h5 className="font-semibold text-sm text-white">{n.title}</h5>
-                                                        <span className="text-[10px] text-slate-500">
-                                                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-sm text-slate-400 leading-snug">{n.message}</p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+            {/* Main */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Topbar */}
+                <header className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0 relative"
+                    style={{ background: 'rgba(3,7,15,0.8)', backdropFilter: 'blur(12px)' }}>
+                    <div>
+                        <h1 className="text-white font-black text-base">
+                            Welcome back, <span className="text-gradient">{patient?.name?.split(' ')[0]}</span> 👋
+                        </h1>
+                        <p className="text-slate-600 text-xs">Your personal AI-powered pharmacy portal</p>
                     </div>
+                    <div className="flex items-center gap-3">
+                        {/* Notification bell */}
+                        <div className="relative">
+                            <button onClick={() => setShowNotifs(x => !x)}
+                                className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/8"
+                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <Bell className="w-4 h-4 text-slate-400" />
+                                {unread > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
+                                        style={{ background: '#f43f5e' }}>{unread}</span>
+                                )}
+                            </button>
 
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold shadow-lg">
-                        {patient.name?.charAt(0) || 'P'}
+                            {showNotifs && (
+                                <div className="absolute right-0 top-11 w-80 glass z-50 overflow-hidden shadow-2xl anim-appear">
+                                    <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
+                                        <p className="text-white font-bold text-sm">Pharmacy Notifications</p>
+                                        <button onClick={() => setShowNotifs(false)} className="text-slate-600 hover:text-white text-xs">✕</button>
+                                    </div>
+                                    {notifications.length === 0 ? (
+                                        <div className="py-8 text-center">
+                                            <Bell className="w-8 h-8 mx-auto text-slate-700 mb-2" />
+                                            <p className="text-slate-600 text-sm">No notifications yet</p>
+                                        </div>
+                                    ) : notifications.map(n => (
+                                        <div key={n.id} className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                                                    style={{ background: n.type === 'alert' ? 'rgba(244,63,94,0.15)' : n.type === 'refill' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)' }}>
+                                                    <Bell className="w-3.5 h-3.5" style={{ color: n.type === 'alert' ? '#f43f5e' : n.type === 'refill' ? '#f59e0b' : '#818cf8' }} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-slate-300 text-xs font-semibold">{n.subject || 'Message from Pharmacist'}</p>
+                                                    <p className="text-slate-500 text-[11px] mt-0.5 leading-relaxed">{n.enhanced || n.message}</p>
+                                                    <p className="text-slate-700 text-[10px] mt-1">{n.sent_at}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                            <Zap className="w-3.5 h-3.5 text-indigo-400" />
+                            <span className="text-indigo-300 text-xs font-semibold">Gemini Active</span>
+                        </div>
                     </div>
                 </header>
 
-                {/* Page content */}
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-y-auto scroll">
                     <Routes>
-                        <Route path="/" element={<DashboardHome patient={patient} apiBase={apiBase} />} />
-                        <Route path="/chat" element={<ChatPage patient={patient} apiBase={apiBase} />} />
-                        <Route path="/medicines" element={<MedicineSearch patient={patient} apiBase={apiBase} />} />
-                        <Route path="/orders" element={<OrderHistory patient={patient} apiBase={apiBase} />} />
+                        <Route path="home" element={<DashboardHome patient={patient} apiBase={apiBase} profile={profile} />} />
+                        <Route path="medicines" element={<MedicineSearch patient={patient} apiBase={apiBase} />} />
+                        <Route path="orders" element={<OrderHistory patient={patient} apiBase={apiBase} />} />
+                        <Route path="chat" element={<ChatPage patient={patient} apiBase={apiBase} />} />
+                        <Route path="*" element={<Navigate to="home" replace />} />
                     </Routes>
                 </main>
             </div>

@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
-import { AlertTriangle, PackageSearch, Loader2, FileText, X } from 'lucide-react'
+import {
+    AlertTriangle, PackageSearch, Loader2, FileText, X, Search,
+    TrendingDown, Package, CheckCircle, Bot, Send, Zap, RefreshCw
+} from 'lucide-react'
 
 export default function InventoryManager({ apiBase }) {
     const [medicines, setMedicines] = useState([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
+    const [catFilter, setCatFilter] = useState('all')
     const [showPOModal, setShowPOModal] = useState(false)
     const [poDraft, setPoDraft] = useState('')
     const [generating, setGenerating] = useState(false)
@@ -14,154 +18,178 @@ export default function InventoryManager({ apiBase }) {
         const fetchMeds = async () => {
             try {
                 const res = await axios.get(`${apiBase}/pharmacist/inventory`)
-                setMedicines(res.data.medicines)
-            } catch (e) {
-                console.error('Failed to load inventory', e)
-            } finally { setLoading(false) }
+                setMedicines(res.data.medicines || [])
+            } catch { }
+            finally { setLoading(false) }
         }
         fetchMeds()
     }, [apiBase])
 
-    if (loading) return <div className="text-center py-12"><Loader2 className="w-8 h-8 animate-spin mx-auto text-teal-500" /></div>
+    const filtered = medicines.filter(m => {
+        const matchSearch = m.name.toLowerCase().includes(search.toLowerCase()) ||
+            m.generic_name?.toLowerCase().includes(search.toLowerCase())
+        const matchCat = catFilter === 'all' || m.category === catFilter
+        return matchSearch && matchCat
+    })
 
-    const filtered = medicines.filter(m =>
-        m.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.generic_name.toLowerCase().includes(search.toLowerCase())
-    )
+    const categories = ['all', ...new Set(medicines.map(m => m.category).filter(Boolean))]
+    const lowStock = medicines.filter(m => parseInt(m.stock_quantity) < parseInt(m.min_stock_level))
 
-    const handleGeneratePO = async () => {
-        setGenerating(true)
-        setShowPOModal(true)
+    const generatePO = async () => {
+        setGenerating(true); setPoDraft(''); setShowPOModal(true)
         try {
             const res = await axios.post(`${apiBase}/pharmacist/generate-po`)
             setPoDraft(res.data.po_draft)
-        } catch (e) {
-            setPoDraft("Error generating Purchase Order. Please try again.")
-        } finally {
-            setGenerating(false)
-        }
+        } catch { setPoDraft('Failed to generate PO. Please try again.') }
+        finally { setGenerating(false) }
     }
 
+    const stockPercent = (m) => {
+        const pct = (parseInt(m.stock_quantity) / (parseInt(m.min_stock_level) * 3)) * 100
+        return Math.min(pct, 100)
+    }
+
+    if (loading) return (
+        <div className="flex items-center justify-center h-64">
+            <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
+        </div>
+    )
+
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10">
+        <div className="p-8 max-w-6xl space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h3 className="text-xl font-semibold text-white">Inventory Management</h3>
-                    <p className="text-sm text-gray-400 mt-1">Monitor stock and automate restocks</p>
+                    <h2 className="text-2xl font-black text-white flex items-center gap-2">
+                        <Package className="w-6 h-6 text-indigo-400" /> Inventory Manager
+                    </h2>
+                    <p className="text-slate-500 text-sm mt-1">{medicines.length} products · {lowStock.length} low stock</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={handleGeneratePO}
-                        disabled={generating}
-                        className="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-4 py-2.5 rounded-xl font-medium shadow-lg shadow-teal-500/20 hover:shadow-teal-500/40 transition-all disabled:opacity-50"
-                    >
-                        {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                        Generate Restock PO
-                    </button>
-                    <div className="relative w-64 block">
-                        <PackageSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search medicines..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-teal-500 transition-colors"
-                        />
+                <button onClick={generatePO}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-all"
+                    style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
+                    <Bot className="w-4 h-4" /> AI Restock PO
+                </button>
+            </div>
+
+            {/* Low stock alert */}
+            {lowStock.length > 0 && (
+                <div className="flex items-center gap-3 px-5 py-4 rounded-2xl border border-red-500/20 bg-red-500/5 animate-slide-up">
+                    <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <div>
+                        <p className="text-red-300 font-semibold text-sm">{lowStock.length} items below minimum stock level</p>
+                        <p className="text-slate-500 text-xs mt-0.5">{lowStock.slice(0, 3).map(m => m.name.split(' ')[0]).join(', ')}{lowStock.length > 3 ? ` + ${lowStock.length - 3} more` : ''}</p>
                     </div>
+                    <button onClick={generatePO} className="ml-auto text-xs font-bold text-red-400 hover:text-white border border-red-500/25 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-all flex-shrink-0">
+                        Generate PO →
+                    </button>
+                </div>
+            )}
+
+            {/* Search + Category filter */}
+            <div className="flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[220px]">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input type="text" placeholder="Search medicines…" value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="input-field pl-10 py-2.5 text-sm" />
+                </div>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    {categories.slice(0, 8).map(cat => (
+                        <button key={cat} onClick={() => setCatFilter(cat)}
+                            className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold capitalize transition-all ${catFilter === cat ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'bg-white/5 text-slate-500 hover:text-white hover:bg-white/10'}`}>
+                            {cat}
+                        </button>
+                    ))}
                 </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-white/5 text-gray-400 text-sm border-b border-white/10">
-                        <tr>
-                            <th className="p-4 font-medium">Product ID</th>
-                            <th className="p-4 font-medium">Name & Generic</th>
-                            <th className="p-4 font-medium">Category</th>
-                            <th className="p-4 font-medium text-right">Price</th>
-                            <th className="p-4 font-medium text-right">Stock Level</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/10">
-                        {filtered.map(med => {
-                            const isLow = parseInt(med.stock_quantity) < parseInt(med.min_stock_level)
-                            const isOut = parseInt(med.stock_quantity) === 0
-                            return (
-                                <tr key={med.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="p-4 text-sm font-mono text-gray-400">{med.id}</td>
-                                    <td className="p-4">
-                                        <div className="text-white font-medium flex items-center space-x-2">
-                                            <span>{med.name}</span>
-                                            {med.prescription_required && (
-                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">Rx</span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-gray-500">{med.generic_name}</div>
-                                    </td>
-                                    <td className="p-4 text-sm text-gray-400">{med.category}</td>
-                                    <td className="p-4 text-sm text-right">₹{med.price.toFixed(2)}</td>
-                                    <td className="p-4 text-right">
-                                        <div className="flex items-center justify-end space-x-2">
-                                            {isLow && !isOut && <AlertTriangle size={14} className="text-yellow-500" />}
-                                            {isOut && <AlertTriangle size={14} className="text-red-500" />}
-                                            <span className={`font-medium ${isOut ? 'text-red-400' : isLow ? 'text-yellow-400' : 'text-green-400'}`}>
-                                                {med.stock_quantity}
-                                            </span>
-                                            <span className="text-gray-500 text-xs text-left w-8">/ {med.min_stock_level}</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
+            {/* Medicine grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {filtered.map(m => {
+                    const isLow = parseInt(m.stock_quantity) < parseInt(m.min_stock_level)
+                    const pct = stockPercent(m)
+                    return (
+                        <div key={m.id}
+                            className={`glass-card p-5 border transition-all hover:scale-[1.01] ${isLow ? 'border-red-500/20' : 'border-white/5'}`}>
+                            {/* Top row */}
+                            <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isLow ? 'bg-red-500/15' : 'bg-indigo-500/15'}`}>
+                                        <Package className={`w-5 h-5 ${isLow ? 'text-red-400' : 'text-indigo-400'}`} />
+                                    </div>
+                                    <div>
+                                        <p className="text-white font-semibold text-sm leading-tight line-clamp-2 max-w-[150px]">{m.name}</p>
+                                        <p className="text-slate-500 text-[10px] mt-0.5">{m.generic_name}</p>
+                                    </div>
+                                </div>
+                                {isLow && <span className="badge badge-red text-[9px] flex-shrink-0">LOW</span>}
+                            </div>
+
+                            {/* Category + price */}
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-slate-400 border border-white/5">{m.category}</span>
+                                <span className="text-white font-black text-base">₹{parseFloat(m.price).toFixed(2)}</span>
+                            </div>
+
+                            {/* Stock bar */}
+                            <div className="mb-2">
+                                <div className="flex justify-between mb-1.5">
+                                    <span className="text-[10px] text-slate-500">Stock: <span className={`font-bold ${isLow ? 'text-red-400' : 'text-emerald-400'}`}>{m.stock_quantity}</span></span>
+                                    <span className="text-[10px] text-slate-600">Min: {m.min_stock_level} {m.unit}</span>
+                                </div>
+                                <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-700"
+                                        style={{
+                                            width: `${pct}%`,
+                                            background: isLow ? 'linear-gradient(90deg, #dc2626, #f87171)' : 'linear-gradient(90deg, #059669, #34d399)'
+                                        }} />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2">
+                                <span>{m.supplier}</span>
+                                {m.prescription_required === 'true' || m.prescription_required === true
+                                    ? <span className="badge badge-yellow text-[9px]">Rx Required</span>
+                                    : <span className="badge badge-green text-[9px]">OTC</span>}
+                            </div>
+                        </div>
+                    )
+                })}
             </div>
 
             {/* PO Modal */}
             {showPOModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-[#15202b] border border-teal-500/20 w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
-                        {/* Header */}
-                        <div className="px-6 py-4 border-b border-teal-500/20 flex justify-between items-center bg-teal-500/5">
-                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-teal-400" />
-                                Smart Restock Purchase Order
-                            </h3>
-                            <button onClick={() => setShowPOModal(false)} className="p-2 -mr-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="glass-card border border-indigo-500/20 w-full max-w-2xl max-h-[80vh] flex flex-col animate-slide-up">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8 flex-shrink-0">
+                            <h3 className="font-bold text-white flex items-center gap-2"><Bot className="w-5 h-5 text-indigo-400" /> AI-Generated Purchase Order</h3>
+                            <button onClick={() => setShowPOModal(false)} className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-
-                        {/* Body */}
-                        <div className="flex-1 overflow-y-auto p-6">
-                            {generating ? (
-                                <div className="py-20 flex flex-col items-center justify-center text-teal-400">
-                                    <Loader2 className="w-10 h-10 animate-spin mb-4" />
-                                    <p className="animate-pulse">AI Agent analyzing inventory levels and drafting PO...</p>
+                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                            {generating
+                                ? <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                    <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+                                    <p className="text-slate-500 text-sm">AI drafting your Purchase Order…</p>
                                 </div>
-                            ) : (
-                                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 font-mono text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
-                                    {poDraft}
-                                </div>
-                            )}
+                                : <pre className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed font-mono">{poDraft}</pre>
+                            }
                         </div>
-
-                        {/* Footer */}
-                        <div className="p-4 border-t border-teal-500/20 bg-black/20 flex justify-end gap-3">
-                            <button
-                                onClick={() => setShowPOModal(false)}
-                                className="px-5 py-2.5 rounded-xl font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                disabled={generating || poDraft.includes('All inventory levels')}
-                                className="px-5 py-2.5 rounded-xl font-medium bg-teal-500 text-white shadow-lg shadow-teal-500/20 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 transition-colors flex items-center gap-2"
-                            >
-                                <FileText className="w-4 h-4" />
-                                Send Order to Distributor
-                            </button>
-                        </div>
+                        {!generating && poDraft && (
+                            <div className="px-6 py-4 border-t border-white/8 flex gap-3">
+                                <button
+                                    onClick={() => { navigator.clipboard.writeText(poDraft) }}
+                                    className="btn-secondary text-sm flex-1">
+                                    Copy PO
+                                </button>
+                                <button onClick={() => setShowPOModal(false)} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white"
+                                    style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                                    <Send className="w-4 h-4" /> Send to Distributor
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

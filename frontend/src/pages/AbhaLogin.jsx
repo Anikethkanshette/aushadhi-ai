@@ -1,137 +1,189 @@
 import React, { useState } from 'react'
 import axios from 'axios'
-import { Shield, Pill, Mic, Stethoscope, AlertCircle, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck, Mic, Sparkles, Heart, Loader2, ArrowRight } from 'lucide-react'
 
 const DEMO_PATIENTS = [
-    { abha_id: '1234-5678-9012', name: 'Rajesh Kumar', hint: 'Age 58, Diabetic' },
-    { abha_id: '2345-6789-0123', name: 'Priya Sharma', hint: 'Age 34, Allergies' },
-    { abha_id: '3456-7890-1234', name: 'Amit Patel', hint: 'Age 62, Cardiac' },
+    { name: 'Rajesh Kumar', abha: '1234-5678-9012', password: 'patient123', age: 58, cond: 'Diabetes, Hypertension', color: '#6366f1' },
+    { name: 'Priya Sharma', abha: '2345-6789-0123', password: 'patient123', age: 34, cond: 'Allergies, Vit D', color: '#14b8a6' },
+    { name: 'Amit Patel', abha: '3456-7890-1234', password: 'patient123', age: 62, cond: 'Cardiac, Lipids', color: '#f59e0b' },
+    { name: 'Sunita Devi', abha: '4567-8901-2345', password: 'patient123', age: 45, cond: 'Thyroid, GERD', color: '#f43f5e' },
+    { name: 'Mohammed K.', abha: '5678-9012-3456', password: 'patient123', age: 38, cond: 'Healthy', color: '#10b981' },
+]
+
+const FEATURES = [
+    { icon: Sparkles, label: 'AI Pharmacist', sub: 'Gemini-powered advice' },
+    { icon: Mic, label: 'Voice Enabled', sub: 'Hindi & English support' },
+    { icon: Heart, label: 'Health History', sub: 'Full medical profile' },
+    { icon: ShieldCheck, label: 'ABHA Secure', sub: '20% PMJAY discount' },
 ]
 
 export default function AbhaLogin({ onLogin, apiBase }) {
     const [abhaId, setAbhaId] = useState('')
+    const [password, setPassword] = useState('')
+    const [showPass, setShowPass] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
-    const formatAbha = (val) => {
-        const digits = val.replace(/\D/g, '').slice(0, 12)
-        return digits.replace(/(\d{4})(\d{0,4})(\d{0,4})/, (_, a, b, c) =>
-            [a, b, c].filter(Boolean).join('-')
-        )
+    const handleLogin = async (e) => {
+        e?.preventDefault()
+        if (!abhaId || !password) { setError('Please enter ABHA ID and password'); return }
+        setLoading(true); setError('')
+        try {
+            const res = await axios.post(`${apiBase}/patients/login`, { abha_id: abhaId.trim(), password })
+            onLogin(res.data.patient)
+        } catch (err) {
+            setError(err.response?.data?.detail || 'Login failed. Check your credentials.')
+        } finally { setLoading(false) }
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        if (abhaId.replace(/-/g, '').length < 12) {
-            setError('Please enter a valid 12-digit ABHA ID')
-            return
-        }
-        setLoading(true)
-        setError('')
-        try {
-            let patient
-            try {
-                const res = await axios.post(`${apiBase}/patients/login?abha_id=${abhaId}`)
-                patient = res.data.patient
-            } catch {
-                // Backend offline – use simulated lookup
-                const demo = DEMO_PATIENTS.find(p => p.abha_id === abhaId)
-                patient = demo
-                    ? { patient_id: `P00${DEMO_PATIENTS.indexOf(demo) + 1}`, abha_id: abhaId, name: demo.name, age: 40, gender: 'Unknown', chronic_conditions: [] }
-                    : { patient_id: `P-${abhaId.slice(0, 4)}`, abha_id: abhaId, name: 'Patient', age: 30, gender: 'Unknown', chronic_conditions: [] }
-            }
-            onLogin(patient)
-        } catch (err) {
-            setError('Login failed. Please try again.')
-        } finally {
-            setLoading(false)
-        }
-    }
+    const fill = (p) => { setAbhaId(p.abha); setPassword(p.password); setError('') }
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-            {/* Background gradient orbs */}
-            <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="min-h-screen page-bg flex">
 
-            <div className="w-full max-w-md relative z-10 animate-fade-in">
+            {/* ── Left panel ── */}
+            <div className="hidden lg:flex flex-col justify-between w-[54%] px-16 py-14 relative overflow-hidden">
+                {/* Decorative orbs */}
+                <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full opacity-20"
+                    style={{ background: 'radial-gradient(circle, #6366f1, transparent)', filter: 'blur(80px)' }} />
+                <div className="absolute bottom-10 right-10 w-72 h-72 rounded-full opacity-15"
+                    style={{ background: 'radial-gradient(circle, #14b8a6, transparent)', filter: 'blur(60px)' }} />
+
                 {/* Logo */}
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-emerald-500 mb-5 shadow-2xl shadow-indigo-500/40">
-                        <Pill className="w-10 h-10 text-white" />
+                <div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg, #4f46e5, #818cf8)', boxShadow: '0 0 24px rgba(99,102,241,0.5)' }}>
+                            <Heart className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-white font-black text-2xl tracking-tight">
+                            Aushadhi<span className="text-gradient">AI</span>
+                        </span>
                     </div>
-                    <h1 className="text-4xl font-bold text-white mb-2">
-                        Aushadhi<span className="text-indigo-400">AI</span>
-                    </h1>
-                    <p className="text-slate-400 text-sm">Voice-Enabled Agentic AI Pharmacist</p>
+                    <p className="text-slate-500 text-sm ml-1">AI Healthcare Platform · Powered by Google Gemini</p>
                 </div>
 
-                {/* Features row */}
-                <div className="flex gap-3 mb-8">
-                    {[
-                        { icon: Stethoscope, label: 'AI Diagnosis' },
-                        { icon: Mic, label: 'Voice Chat' },
-                        { icon: Shield, label: 'ABHA Secure' },
-                    ].map(({ icon: Icon, label }) => (
-                        <div key={label} className="flex-1 glass-card p-3 text-center">
-                            <Icon className="w-5 h-5 mx-auto mb-1 text-indigo-400" />
-                            <span className="text-xs text-slate-400">{label}</span>
+                {/* Hero content */}
+                <div className="anim-up">
+                    <p className="text-[11px] font-bold tracking-[0.2em] text-indigo-400 uppercase mb-4">Your Digital Pharmacist</p>
+                    <h1 className="text-5xl font-black text-white leading-tight mb-6"
+                        style={{ fontFamily: "'Playfair Display', serif" }}>
+                        Healthcare,<br />
+                        <span className="text-gradient">Reimagined</span><br />
+                        with AI.
+                    </h1>
+                    <p className="text-slate-400 text-lg leading-relaxed max-w-sm">
+                        Voice-enabled AI pharmacist that understands your health history, validates prescriptions, and delivers medicines to your door.
+                    </p>
+                </div>
+
+                {/* Feature pills */}
+                <div className="grid grid-cols-2 gap-3">
+                    {FEATURES.map(({ icon: Icon, label, sub }, i) => (
+                        <div key={label} className={`glass-sm p-4 flex items-center gap-3 anim-up delay-${i + 1}`}>
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: 'rgba(99,102,241,0.15)' }}>
+                                <Icon className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <div>
+                                <p className="text-white text-sm font-semibold">{label}</p>
+                                <p className="text-slate-500 text-xs">{sub}</p>
+                            </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Login form */}
-                <div className="glass-card p-8">
-                    <h2 className="text-xl font-semibold text-white mb-2">Sign In with ABHA ID</h2>
-                    <p className="text-slate-400 text-sm mb-6">
-                        Enter your 12-digit Ayushman Bharat Health Account ID
-                    </p>
+                {/* Demo patients */}
+                <div>
+                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-3">Quick Demo Login</p>
+                    <div className="flex flex-wrap gap-2">
+                        {DEMO_PATIENTS.map(p => (
+                            <button key={p.abha} onClick={() => fill(p)}
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold transition-all hover:scale-[1.04]"
+                                style={{ borderColor: `${p.color}30`, background: `${p.color}12`, color: p.color }}>
+                                <span className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black"
+                                    style={{ background: `${p.color}30` }}>{p.name[0]}</span>
+                                {p.name.split(' ')[0]}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">ABHA ID</label>
-                            <input
-                                id="abha-input"
-                                type="text"
-                                value={abhaId}
-                                onChange={(e) => setAbhaId(formatAbha(e.target.value))}
-                                placeholder="XXXX-XXXX-XXXX"
-                                className="input-field text-lg tracking-widest font-mono"
-                                autoComplete="off"
-                            />
+            {/* ── Right panel / Login form ── */}
+            <div className="flex-1 flex items-center justify-center px-6 py-12 relative">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-1/4 right-1/4 w-64 h-64 rounded-full opacity-10"
+                        style={{ background: 'radial-gradient(circle, #8b5cf6, transparent)', filter: 'blur(60px)' }} />
+                </div>
+
+                <div className="w-full max-w-sm anim-appear">
+                    {/* Mobile logo */}
+                    <div className="flex lg:hidden items-center gap-2 mb-8">
+                        <Heart className="w-6 h-6 text-indigo-400" />
+                        <span className="text-white font-black text-xl">AushadhiAI</span>
+                    </div>
+
+                    <div className="card-luxury p-8">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-black text-white mb-1.5">Patient Login</h2>
+                            <p className="text-slate-500 text-sm">Sign in with your ABHA ID and password</p>
                         </div>
 
-                        {error && (
-                            <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                                {error}
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            {/* ABHA ID */}
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">ABHA ID</label>
+                                <div className="relative">
+                                    <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                                    <input type="text" value={abhaId} onChange={e => setAbhaId(e.target.value)}
+                                        placeholder="XXXX-XXXX-XXXX" className="input pl-10 text-sm" />
+                                </div>
                             </div>
-                        )}
 
-                        <button id="login-btn" type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2 text-base">
-                            {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Authenticating...</> : 'Login →'}
-                        </button>
-                    </form>
+                            {/* Password */}
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+                                <div className="relative">
+                                    <input type={showPass ? 'text' : 'password'} value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        placeholder="Enter your password" className="input pr-10 text-sm" />
+                                    <button type="button" onClick={() => setShowPass(x => !x)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white transition-colors">
+                                        {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            </div>
 
-                    {/* Demo shortcuts */}
-                    <div className="mt-6 pt-6 border-t border-white/10">
-                        <p className="text-xs text-slate-500 mb-3 text-center">Demo Patients (click to autofill)</p>
-                        <div className="space-y-2">
-                            {DEMO_PATIENTS.map((p) => (
-                                <button
-                                    key={p.abha_id}
-                                    id={`demo-${p.abha_id}`}
-                                    onClick={() => setAbhaId(p.abha_id)}
-                                    className="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white/10 transition-colors duration-150 group"
-                                >
-                                    <div>
-                                        <span className="text-sm text-white font-medium">{p.name}</span>
-                                        <span className="text-xs text-slate-500 ml-2">{p.hint}</span>
-                                    </div>
-                                    <span className="text-xs font-mono text-slate-500 group-hover:text-indigo-400 transition-colors">{p.abha_id}</span>
-                                </button>
-                            ))}
+                            {error && (
+                                <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-red-400"
+                                    style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.20)' }}>
+                                    {error}
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={loading}
+                                className="btn btn-primary w-full text-sm py-3.5">
+                                {loading
+                                    ? <><Loader2 className="w-4 h-4 anim-spin" /> Verifying…</>
+                                    : <><span>Sign In</span> <ArrowRight className="w-4 h-4" /></>}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 pt-6 border-t border-white/8 text-center">
+                            <span className="text-slate-600 text-xs">Pharmacist? </span>
+                            <a href="/pharmacist/login" className="text-indigo-400 hover:text-indigo-300 text-xs font-semibold transition-colors">
+                                Access Pharmacist Portal →
+                            </a>
                         </div>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-4 mt-6 text-[10px] text-slate-700">
+                        <span>🔒 ABHA Secure</span>
+                        <span>✦</span>
+                        <span>🤖 Live AI Agents</span>
+                        <span>✦</span>
+                        <span>💊 PMJAY Welfare</span>
                     </div>
                 </div>
             </div>
