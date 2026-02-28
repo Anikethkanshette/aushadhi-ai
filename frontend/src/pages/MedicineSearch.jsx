@@ -16,7 +16,13 @@ export default function MedicineSearch() {
     const [query, setQuery] = useState('')
     const [loading, setLoading] = useState(true)
     const [categories, setCategories] = useState([])
-    const [filter, setFilter] = useState({ category: '', rxOnly: false })
+    const [filter, setFilter] = useState({
+        category: '',
+        rxType: 'all',
+        inStockOnly: false,
+        minPrice: '',
+        maxPrice: '',
+    })
 
     // Checkout state
     const [checkoutMed, setCheckoutMed] = useState(null)
@@ -54,7 +60,21 @@ export default function MedicineSearch() {
                 m.category?.toLowerCase().includes(lq)
             )
         }
-        if (f.rxOnly) filtered = filtered.filter(m => m.prescription_required === true || m.prescription_required === 'true')
+        if (f.rxType === 'rx') {
+            filtered = filtered.filter(m => m.prescription_required === true || m.prescription_required === 'true')
+        }
+        if (f.rxType === 'otc') {
+            filtered = filtered.filter(m => !(m.prescription_required === true || m.prescription_required === 'true'))
+        }
+        if (f.inStockOnly) {
+            filtered = filtered.filter(m => parseInt(m.stock_quantity) > 0)
+        }
+        if (f.minPrice !== '') {
+            filtered = filtered.filter(m => parseFloat(m.price) >= parseFloat(f.minPrice || 0))
+        }
+        if (f.maxPrice !== '') {
+            filtered = filtered.filter(m => parseFloat(m.price) <= parseFloat(f.maxPrice || Number.MAX_SAFE_INTEGER))
+        }
         if (f.category) filtered = filtered.filter(m => m.category === f.category)
         setResults(filtered)
     }
@@ -133,9 +153,43 @@ export default function MedicineSearch() {
                         </button>
                     )}
                 </div>
-                <button onClick={() => setFilter(f => ({ ...f, rxOnly: !f.rxOnly }))}
-                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${filter.rxOnly ? 'border-amber-500/40 bg-amber-500/10 text-amber-400' : 'border-white/10 text-slate-500 hover:text-white hover:border-white/20'}`}>
-                    <Filter className="w-4 h-4" /> Rx Only
+                <button onClick={() => setFilter(f => ({ ...f, inStockOnly: !f.inStockOnly }))}
+                    className={`flex items-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all ${filter.inStockOnly ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-slate-500 hover:text-white hover:border-white/20'}`}>
+                    <Filter className="w-4 h-4" /> In Stock
+                </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <select
+                    value={filter.rxType}
+                    onChange={e => setFilter(f => ({ ...f, rxType: e.target.value }))}
+                    className="input-field py-3 text-sm"
+                >
+                    <option value="all">All Types</option>
+                    <option value="rx">Prescription Only</option>
+                    <option value="otc">OTC Only</option>
+                </select>
+                <input
+                    type="number"
+                    min="0"
+                    value={filter.minPrice}
+                    onChange={e => setFilter(f => ({ ...f, minPrice: e.target.value }))}
+                    placeholder="Min ₹"
+                    className="input-field py-3 text-sm"
+                />
+                <input
+                    type="number"
+                    min="0"
+                    value={filter.maxPrice}
+                    onChange={e => setFilter(f => ({ ...f, maxPrice: e.target.value }))}
+                    placeholder="Max ₹"
+                    className="input-field py-3 text-sm"
+                />
+                <button
+                    onClick={() => setFilter({ category: '', rxType: 'all', inStockOnly: false, minPrice: '', maxPrice: '' })}
+                    className="px-4 py-3 rounded-xl border border-white/10 text-slate-500 hover:text-white hover:border-white/20 text-sm font-semibold transition-all"
+                >
+                    Clear Filters
                 </button>
             </div>
 
