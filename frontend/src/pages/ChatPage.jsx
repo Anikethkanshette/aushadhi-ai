@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import axios from 'axios'
 import { Mic, MicOff, Send, Bot, User, Loader2, Volume2, VolumeX, Upload, X, Sparkles, Zap } from 'lucide-react'
+import { API_CONFIG, API_ENDPOINTS } from '../config'
+import { useAppContext } from '../context/AppContext'
 
 /* ── Speech Recognition hook ──────────────────────────────────────────────── */
 function useSpeechRecognition(onResult) {
@@ -104,9 +106,14 @@ const QUICK_ACTIONS = [
     { id: 'search', label: 'Search Medicine', message: 'Search medicines for fever and show in-stock options.' },
     { id: 'order', label: 'Order Help', message: 'Help me place an order for my medicines.' },
     { id: 'history', label: 'Order History', message: 'Show my recent order history summary.' },
+    { id: 'cancel', label: 'Cancel Order', message: 'Show my latest order and help me cancel it.' },
+    { id: 'refill', label: 'Auto Refill', message: 'Enable auto refill for my regular medicine with WhatsApp confirmation.' },
+    { id: 'notif', label: 'Notifications', message: 'Show unread notifications and mark them as read.' },
 ]
 
-export default function ChatPage({ patient, apiBase }) {
+export default function ChatPage() {
+    const { patient } = useAppContext()
+    const apiBase = API_CONFIG.BASE_URL
     const [messages, setMessages] = useState([{
         role: 'assistant',
         content: `Hello ${patient?.name?.split(' ')[0] || 'there'}! 👋 I'm your AI Pharmacist powered by Gemini. Ask me about medicines, check availability, verify prescriptions, or track orders. You can also speak using the mic!`,
@@ -114,6 +121,7 @@ export default function ChatPage({ patient, apiBase }) {
     }])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
+    const [guidedFlow, setGuidedFlow] = useState({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
     const [lang, setLang] = useState('en-IN')
     const [ttsEnabled, setTts] = useState(true)
     const [hasPrescription, setHasRx] = useState(false)
@@ -135,25 +143,252 @@ export default function ChatPage({ patient, apiBase }) {
         ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'
     }, [input])
 
+    const isLikelyMedicineNameInput = (text) => {
+        const value = (text || '').trim().toLowerCase()
+        if (!value) return false
+        const actionWords = [
+            'order', 'buy', 'purchase', 'history', 'cancel', 'status', 'notification',
+            'auto refill', 'refill', 'help', 'track', 'scan', 'prescription', 'quantity',
+            'price', 'available', 'stock', 'alternative', 'substitute'
+        ]
+        if (actionWords.some(w => value.includes(w))) return false
+        const tokenCount = value.split(/\s+/).length
+        return tokenCount <= 4
+    }
+
+    const callAgent = async (text) => {
+        const recentContext = messages
+            .slice(-6)
+            .map(m => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${String(m.content || '').slice(0, 180)}`)
+            .join('\n')
+
+        const flowHint = guidedFlow.type !== 'idle'
+            ? `\n\nCurrent flow: ${guidedFlow.type} (${guidedFlow.stage})`
+            : ''
+
+        const enrichedMessage = recentContext
+            ? `Conversation context:\n${recentContext}\n\nLatest user request: ${text}${flowHint}`
+            : text
+
+        const res = await axios.post(`${apiBase}${API_ENDPOINTS.AGENT_CHAT}`, {
+            message: enrichedMessage,
+            patient_id: patient?.patient_id,
+            patient_name: patient?.name,
+            abha_id: patient?.abha_id,
+            language: lang,
+            has_prescription: hasPrescription,
+        })
+        return res.data
+    }
+
+    const parseYesNo = (text) => {
+        const normalized = (text || '').trim().toLowerCase()
+        const yes = ['yes', 'y', 'haan', 'ha', 'ok', 'okay', 'sure']
+        const no = ['no', 'n', 'nah', 'not now']
+        if (yes.some(v => normalized === v || normalized.startsWith(v + ' '))) return 'yes'
+        if (no.some(v => normalized === v || normalized.startsWith(v + ' '))) return 'no'
+        return null
+    }
+
+    const detectGuidedIntent = (text) => {
+        const t = (text || '').toLowerCase()
+        if (t.includes('order history') || t.includes('my orders') || t.includes('recent orders') || t.includes('past orders')) {
+            return { type: 'history', prompt: 'Do you want me to show your order history now? Reply yes or no.' }
+        }
+        if (t.includes('notification')) {
+            return { type: 'notifications', prompt: 'Do you want me to show your notifications now? Reply yes or no.' }
+        }
+        if (t.includes('order status') || t.includes('track order')) {
+            return { type: 'order_status', prompt: 'Do you want to check an order status now? Reply yes or no.' }
+        }
+        if (t.includes('cancel order')) {
+            return { type: 'cancel_order', prompt: 'Do you want to cancel an order now? Reply yes or no.' }
+        }
+        if (t.includes('show auto refill') || t.includes('list auto refill')) {
+            return { type: 'auto_refill_list', prompt: 'Do you want me to show your active auto-refill plans now? Reply yes or no.' }
+        }
+        if (t.includes('cancel auto refill') || t.includes('stop auto refill') || t.includes('disable auto refill')) {
+            return { type: 'auto_refill_cancel', prompt: 'Do you want to cancel an auto-refill plan now? Reply yes or no.' }
+        }
+        return null
+    }
+
     const sendMessage = async (text) => {
-        if (!text.trim()) return
-        addMsg('user', text)
+        const trimmed = (text || '').trim()
+        if (!trimmed) return
+        addMsg('user', trimmed)
         setInput('')
+
+        if (guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_decision') {
+            const answer = parseYesNo(trimmed)
+            if (answer === 'yes') {
+                setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_quantity' }))
+                addMsg('assistant', `Great. How many units of ${guidedFlow.medicine?.name || 'this medicine'} would you like? Please enter a number.`)
+                return
+            }
+            if (answer === 'no') {
+                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                addMsg('assistant', 'No problem. You can ask for any other medicine anytime.')
+                return
+            }
+            addMsg('assistant', 'Please reply with yes or no so I can continue.')
+            return
+        }
+
+        if (guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_quantity') {
+            const qty = parseInt(trimmed, 10)
+            if (Number.isNaN(qty) || qty < 1 || qty > 1000) {
+                addMsg('assistant', 'Please enter a valid quantity between 1 and 1000.')
+                return
+            }
+
+            setLoading(true)
+            try {
+                const medicineName = guidedFlow.medicine?.name || 'this medicine'
+                const orderInstruction = `Place an order for ${medicineName}, quantity ${qty}, and confirm total amount and delivery.`
+                const data = await callAgent(orderInstruction)
+                addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                if (ttsEnabled) speak((data.response || '').replace(/[*#\[\]]/g, '').slice(0, 300), lang)
+            } catch {
+                const fallback = 'I could not place the order right now. Please try again in a moment.'
+                addMsg('assistant', fallback)
+                if (ttsEnabled) speak(fallback.slice(0, 200), lang)
+            } finally {
+                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                setLoading(false)
+            }
+            return
+        }
+
+        if (guidedFlow.type !== 'idle') {
+            const answer = parseYesNo(trimmed)
+
+            if (guidedFlow.stage === 'awaiting_decision') {
+                if (answer === 'no') {
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    addMsg('assistant', 'Okay, cancelled. Ask me anything else anytime.')
+                    return
+                }
+                if (answer !== 'yes') {
+                    addMsg('assistant', 'Please reply with yes or no.')
+                    return
+                }
+
+                if (guidedFlow.type === 'history') {
+                    setLoading(true)
+                    try {
+                        const data = await callAgent('Show my recent order history summary.')
+                        addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                    } catch {
+                        addMsg('assistant', 'I could not fetch order history right now. Please try again.')
+                    } finally {
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setLoading(false)
+                    }
+                    return
+                }
+
+                if (guidedFlow.type === 'notifications') {
+                    setLoading(true)
+                    try {
+                        const data = await callAgent('Show unread notifications and mark all as read.')
+                        addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                    } catch {
+                        addMsg('assistant', 'I could not fetch notifications right now. Please try again.')
+                    } finally {
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setLoading(false)
+                    }
+                    return
+                }
+
+                if (guidedFlow.type === 'order_status') {
+                    setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_order_id' }))
+                    addMsg('assistant', 'Please enter your order ID (for example: ORDABC123).')
+                    return
+                }
+
+                if (guidedFlow.type === 'cancel_order') {
+                    setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_order_id' }))
+                    addMsg('assistant', 'Please enter the order ID you want to cancel (for example: ORDABC123).')
+                    return
+                }
+
+                if (guidedFlow.type === 'auto_refill_list') {
+                    setLoading(true)
+                    try {
+                        const data = await callAgent('Show my active auto refill subscriptions.')
+                        addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                    } catch {
+                        addMsg('assistant', 'I could not fetch auto-refill plans right now. Please try again.')
+                    } finally {
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setLoading(false)
+                    }
+                    return
+                }
+
+                if (guidedFlow.type === 'auto_refill_cancel') {
+                    setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_subscription_id' }))
+                    addMsg('assistant', 'Please enter your auto-refill subscription ID (for example: AR-AB12CD34).')
+                    return
+                }
+            }
+
+            if (guidedFlow.stage === 'awaiting_order_id') {
+                const enteredOrderId = trimmed.toUpperCase()
+                setLoading(true)
+                try {
+                    const prompt = guidedFlow.type === 'cancel_order'
+                        ? `Cancel order ${enteredOrderId} for my account.`
+                        : `Check order status for ${enteredOrderId}.`
+                    const data = await callAgent(prompt)
+                    addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                } catch {
+                    addMsg('assistant', 'I could not process this order ID right now. Please try again.')
+                } finally {
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    setLoading(false)
+                }
+                return
+            }
+
+            if (guidedFlow.stage === 'awaiting_subscription_id') {
+                const enteredSubId = trimmed.toUpperCase()
+                setLoading(true)
+                try {
+                    const data = await callAgent(`Cancel auto refill subscription ${enteredSubId}.`)
+                    addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                } catch {
+                    addMsg('assistant', 'I could not cancel that auto-refill plan right now. Please try again.')
+                } finally {
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    setLoading(false)
+                }
+                return
+            }
+        }
+
+        const guidedIntent = detectGuidedIntent(trimmed)
+        if (guidedIntent) {
+            setGuidedFlow({ type: guidedIntent.type, stage: 'awaiting_decision', medicine: null, orderId: '', subscriptionId: '' })
+            addMsg('assistant', guidedIntent.prompt)
+            return
+        }
+
         setLoading(true)
         try {
-            const res = await axios.post(`${apiBase}/agent/chat`, {
-                message: text,
-                patient_id: patient?.patient_id,
-                patient_name: patient?.name,
-                abha_id: patient?.abha_id,
-                language: lang,
-                has_prescription: hasPrescription,
-            })
-            const data = res.data
+            const data = await callAgent(trimmed)
             addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
             if (ttsEnabled) speak(data.response.replace(/[*#\[\]]/g, '').slice(0, 300), lang)
+
+            if (Array.isArray(data?.medicines_found) && data.medicines_found.length > 0 && isLikelyMedicineNameInput(trimmed)) {
+                const firstMedicine = data.medicines_found[0]
+                setGuidedFlow({ type: 'order', stage: 'awaiting_decision', medicine: firstMedicine, orderId: '', subscriptionId: '' })
+                addMsg('assistant', `Do you want to order ${firstMedicine?.name}? Reply yes or no.`)
+            }
         } catch {
-            const fallback = getFallback(text)
+            const fallback = getFallback(trimmed)
             addMsg('assistant', fallback)
             if (ttsEnabled) speak(fallback.slice(0, 200), lang)
         } finally { setLoading(false) }
@@ -176,7 +411,7 @@ export default function ChatPage({ patient, apiBase }) {
         setLoading(true)
         try {
             const fd = new FormData(); fd.append('image', file)
-            const res = await axios.post(`${apiBase}/agent/scan-prescription`, fd)
+            const res = await axios.post(`${apiBase}${API_ENDPOINTS.AGENT_SCAN}`, fd)
             const data = res.data
             const meds = (data.medicines || []).map(m => m.matched_medicine ? { ...m.matched_medicine, available: m.available } : null).filter(Boolean)
             addMsg('assistant', `✅ Prescription scanned. ${data.message} Matches found:`, { medicines: meds })
@@ -261,6 +496,36 @@ export default function ChatPage({ patient, apiBase }) {
                         }}
                     >
                         {action.label}
+                    </button>
+                ))}
+
+                {guidedFlow.stage === 'awaiting_decision' && (
+                    <>
+                        <button
+                            onClick={() => sendMessage('yes')}
+                            className="text-xs px-3 py-1.5 rounded-xl transition-all font-semibold"
+                            style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.22)', color: '#86efac' }}
+                        >
+                            Yes
+                        </button>
+                        <button
+                            onClick={() => sendMessage('no')}
+                            className="text-xs px-3 py-1.5 rounded-xl transition-all font-semibold"
+                            style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.22)', color: '#fda4af' }}
+                        >
+                            No
+                        </button>
+                    </>
+                )}
+
+                {guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_quantity' && [1, 2, 3, 5].map(q => (
+                    <button
+                        key={`qty-${q}`}
+                        onClick={() => sendMessage(String(q))}
+                        className="text-xs px-3 py-1.5 rounded-xl transition-all font-semibold"
+                        style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.22)', color: '#c7d2fe' }}
+                    >
+                        Qty {q}
                     </button>
                 ))}
             </div>

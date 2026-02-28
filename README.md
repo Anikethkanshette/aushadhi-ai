@@ -2,6 +2,10 @@
 
 > **Voice-Enabled Agentic AI Pharmacist** — AI-powered pharmacy assistant with ABHA login, voice interaction, real pharmaceutical product data, and simulated order processing.
 
+<p align="center">
+   <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=700&size=22&pause=1000&center=true&vCenter=true&width=980&lines=Talk+to+your+AI+Pharmacist+like+a+real+assistant;Search+%E2%86%92+Confirm+%E2%86%92+Order+directly+in+chat;Order+history%2C+notifications%2C+auto-refill+with+guided+conversation" alt="AushadhiAI animated typing banner" />
+</p>
+
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React+Vite-61DAFB)](https://react.dev)
 [![Gemini](https://img.shields.io/badge/AI-Google_Gemini-FF6B35)](https://aistudio.google.com/)
@@ -19,18 +23,41 @@
 | 🎙️ Voice Chat | Web Speech API – speak in English or Hindi |
 | 🔊 Text-to-Speech | AI responds in voice using Speech Synthesis |
 | 🤖 Agentic Router | Main AI routes queries to specialized `PolicyAgent` or `PharmacyAgent` |
+| 🧠 Intelligent Dashboard Chat | Dedicated patient dashboard context (no patient-id prompts in chat) |
+| 💬 Guided Conversational Actions | AI asks follow-up prompts: *Yes/No → Quantity/IDs → Execute* |
 | 📢 Notification Agent | AI automatically drafts context-aware WhatsApp/SMS/Email copy upon order fulfillment, plus manual pharmacist-to-patient direct messaging with AI enhancement |
 | 🔔 In-App Alerts | Real-time notification bell in Patient Dashboard pulling from pharmacist messages |
 | 💊 Medicine Search | 49 real pharmaceutical products with stock, pricing & Rx flags |
 | 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
 | 🛒 Order Flow | Simulated orders with payment + notifications |
 | 🤖 AI Order Placement | Patients can place medicine orders directly through chat ("order 2 paracetamol") |
+| 🔁 Chat-Driven Dashboard Control | Order history, order status, cancellation, notifications, auto-refill list/cancel from chat |
 | 📊 Welfare Eligibility | PMJAY scheme detection and discounts |
 | 🔁 Predictive Refill AI | Agentic AI calculates consumption from history to predict exactly when you will run out of chronic meds |
 | 📸 AI Prescription OCR | Gemini Vision automatically extracts handwritten medicines and dosages from uploaded Rx photos directly into your cart |
 | 📦 Smart Restock AI | Pharmacist AI automates inventory by analyzing low stock to draft customized Purchase Orders to distributors |
 | 📈 Langfuse Tracing | End-to-end agent observability (spans, tool execution, intents, and traces) |
 | 💾 IndexedDB | Offline-first data storage with Dexie |
+
+---
+
+## ✨ Animated Conversation Journey
+
+The AI Pharmacist now behaves like a guided assistant inside patient dashboard:
+
+1. **Medicine Search** → User types medicine name
+2. **Smart Prompt** → AI asks: *"Do you want to order? (yes/no)"*
+3. **Quantity Capture** → AI asks for quantity (with quick quantity chips)
+4. **Execution** → AI places order and confirms amount + delivery
+
+And the same guided style is available for dashboard operations:
+- **Order History** (confirm → show latest)
+- **Order Status** (confirm → ask order ID → fetch status)
+- **Cancel Order** (confirm → ask order ID → cancel)
+- **Notifications** (confirm → fetch unread / mark read)
+- **Auto-Refill** (list active / cancel by subscription ID)
+
+> ✅ All actions run in patient-isolated context using the logged-in dashboard identity.
 
 ---
 
@@ -129,7 +156,7 @@ App → **http://localhost:5173**
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/agent/chat` | AI pharmacist chat + direct natural-language order placement |
+| `POST` | `/agent/chat` | AI pharmacist chat for ordering + guided dashboard actions (history/status/cancel/notifications/auto-refill) |
 | `GET` | `/medicines/` | List / search products |
 | `GET` | `/medicines/?search=ramipril` | Search by name or generic |
 | `POST` | `/orders/` | Place an order |
