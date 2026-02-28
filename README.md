@@ -14,12 +14,13 @@
 | Feature | Description |
 |---|---|
 | 🆔 ABHA Login | Simulated ABDM-compatible identity (12-digit ABHA ID) |
-| 👨‍⚕️ Pharmacist Portal | Admin dashboard with secure login, inventory management, and real-time order fulfilling |
+| 👨‍⚕️ Pharmacist Portal | Admin dashboard with secure login, inventory management, real-time order fulfilling, and **Patient Notification System** |
+| 🎨 Luxury UI | Complete premium frontend redesign with Oceanic Obsidian palette, glassmorphism, and smooth animations |
 | 🎙️ Voice Chat | Web Speech API – speak in English or Hindi |
 | 🔊 Text-to-Speech | AI responds in voice using Speech Synthesis |
 | 🤖 Agentic Router | Main AI routes queries to specialized `PolicyAgent` or `PharmacyAgent` |
-| 📢 Notification Agent | AI automatically drafts context-aware WhatsApp/SMS/Email copy upon order fulfillment |
-| 🔔 In-App Alerts | Real-time notification bell in Patient Dashboard |
+| 📢 Notification Agent | AI automatically drafts context-aware WhatsApp/SMS/Email copy upon order fulfillment, plus manual pharmacist-to-patient direct messaging with AI enhancement |
+| 🔔 In-App Alerts | Real-time notification bell in Patient Dashboard pulling from pharmacist messages |
 | 💊 Medicine Search | 49 real pharmaceutical products with stock, pricing & Rx flags |
 | 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
 | 🛒 Order Flow | Simulated orders with payment + notifications |
@@ -27,7 +28,7 @@
 | 🔁 Predictive Refill AI | Agentic AI calculates consumption from history to predict exactly when you will run out of chronic meds |
 | 📸 AI Prescription OCR | Gemini Vision automatically extracts handwritten medicines and dosages from uploaded Rx photos directly into your cart |
 | 📦 Smart Restock AI | Pharmacist AI automates inventory by analyzing low stock to draft customized Purchase Orders to distributors |
-| 📈 Langfuse Tracing | End-to-end agent observability (spans and traces) |
+| 📈 Langfuse Tracing | End-to-end agent observability (spans, tool execution, intents, and traces) |
 | 💾 IndexedDB | Offline-first data storage with Dexie |
 
 ---
