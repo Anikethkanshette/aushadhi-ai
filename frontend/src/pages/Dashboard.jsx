@@ -50,10 +50,10 @@ export default function Dashboard() {
     }
 
     const nav = [
-        { path: '/dashboard/home', icon: LayoutDashboard, label: 'Overview', accent: '#6366f1' },
-        { path: '/dashboard/medicines', icon: Pill, label: 'Medicines', accent: '#10b981' },
-        { path: '/dashboard/orders', icon: ClipboardList, label: 'My Orders', accent: '#f59e0b' },
-        { path: '/dashboard/chat', icon: MessageSquare, label: 'AI Pharmacist', accent: '#14b8a6' },
+        { path: '/dashboard/home', icon: LayoutDashboard, label: 'Overview', accent: '#2563eb' },
+        { path: '/dashboard/medicines', icon: Pill, label: 'Medicines', accent: '#059669' },
+        { path: '/dashboard/orders', icon: ClipboardList, label: 'My Orders', accent: '#d97706' },
+        { path: '/dashboard/chat', icon: MessageSquare, label: 'AI Pharmacist', accent: '#0891b2' },
     ]
 
     const unread = notifications.length
@@ -63,28 +63,27 @@ export default function Dashboard() {
             {/* Sidebar */}
             <aside className="w-[220px] flex-shrink-0 flex flex-col sidebar">
                 {/* Logo */}
-                <div className="px-5 py-5 border-b border-white/5 flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #4f46e5, #818cf8)', boxShadow: '0 0 16px rgba(99,102,241,0.35)' }}>
+                <div className="px-5 py-5 border-b border-slate-200 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #2d5016, #3d6b1f)' }}>
                         <Heart className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <p className="text-white font-black text-sm tracking-tight">Aushadhi<span className="text-gradient">AI</span></p>
-                        <p className="text-[9px] text-indigo-400/70 uppercase tracking-widest font-bold">Patient Portal</p>
+                        <p className="text-slate-900 font-black text-sm tracking-tight">Aushadhi<span className="text-gradient">AI</span></p>
+                        <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Patient Portal</p>
                     </div>
                 </div>
 
                 {/* Patient card */}
-                <div className="mx-3 mt-4 p-3.5 rounded-xl border border-white/7"
-                    style={{ background: 'rgba(99,102,241,0.07)' }}>
+                <div className="mx-3 mt-4 p-3.5 rounded-xl border border-slate-200 glass-sm">
                     <div className="flex items-center gap-2.5 mb-2">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-black text-sm flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #4f46e5, #8b5cf6)' }}>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-black text-sm flex-shrink-0"
+                            style={{ background: 'linear-gradient(135deg, #2d5016, #3d6b1f)' }}>
                             {patient?.name?.[0]}
                         </div>
                         <div className="min-w-0">
-                            <p className="text-white text-sm font-bold truncate">{patient?.name}</p>
-                            <p className="text-[9px] text-slate-600 font-mono">{patient?.abha_id}</p>
+                            <p className="text-slate-900 text-sm font-bold truncate">{patient?.name}</p>
+                            <p className="text-[9px] text-slate-500 font-mono">{patient?.abha_id}</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap gap-1">
@@ -119,17 +118,16 @@ export default function Dashboard() {
                 </nav>
 
                 {/* Footer */}
-                <div className="p-3 border-t border-white/5 space-y-1">
-                    <div className="px-3 py-2 rounded-xl flex items-center gap-2"
-                        style={{ background: 'rgba(255,255,255,0.03)' }}>
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 anim-pulse" />
+                <div className="p-3 border-t border-slate-200 space-y-1">
+                    <div className="px-3 py-2 rounded-lg flex items-center gap-2 bg-slate-50">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 anim-pulse" />
                         <span className="text-[10px] text-slate-600 font-semibold">AI Agents Online</span>
-                        <Activity className="w-3 h-3 text-emerald-500/50 ml-auto" />
+                        <Activity className="w-3 h-3 text-green-600/50 ml-auto" />
                     </div>
                     <button onClick={handleLogout}
-                        className="nav-item w-full text-left hover:text-red-400">
-                        <div className="icon-pill" style={{ background: 'rgba(244,63,94,0.08)' }}>
-                            <LogOut className="w-4 h-4 text-red-500/60" />
+                        className="nav-item w-full text-left hover:text-red-600">
+                        <div className="icon-pill" style={{ background: 'rgba(220,38,38,0.12)' }}>
+                            <LogOut className="w-4 h-4 text-red-600" />
                         </div>
                         Sign Out
                     </button>
@@ -139,10 +137,9 @@ export default function Dashboard() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Topbar */}
-                <header className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0 relative"
-                    style={{ background: 'rgba(3,7,15,0.8)', backdropFilter: 'blur(12px)' }}>
+                <header className="flex items-center justify-between px-8 py-4 border-b border-slate-200 flex-shrink-0 relative bg-white/50 backdrop-blur-sm">
                     <div>
-                        <h1 className="text-white font-black text-base">
+                        <h1 className="text-slate-900 font-black text-base">
                             Welcome back, <span className="text-gradient">{patient?.name?.split(' ')[0]}</span> 👋
                         </h1>
                         <p className="text-slate-600 text-xs">Your personal AI-powered pharmacy portal</p>
@@ -151,37 +148,37 @@ export default function Dashboard() {
                         {/* Notification bell */}
                         <div className="relative">
                             <button onClick={() => setShowNotifs(x => !x)}
-                                className="relative w-9 h-9 rounded-xl flex items-center justify-center transition-all hover:bg-white/8"
-                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                                <Bell className="w-4 h-4 text-slate-400" />
+                                className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:bg-slate-100"
+                                style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}>
+                                <Bell className="w-4 h-4 text-slate-600" />
                                 {unread > 0 && (
                                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
-                                        style={{ background: '#f43f5e' }}>{unread}</span>
+                                        style={{ background: '#dc2626' }}>{unread}</span>
                                 )}
                             </button>
 
                             {showNotifs && (
-                                <div className="absolute right-0 top-11 w-80 glass z-50 overflow-hidden shadow-2xl anim-appear">
-                                    <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
-                                        <p className="text-white font-bold text-sm">Pharmacy Notifications</p>
-                                        <button onClick={() => setShowNotifs(false)} className="text-slate-600 hover:text-white text-xs">✕</button>
+                                <div className="absolute right-0 top-11 w-80 glass z-50 overflow-hidden shadow-lg anim-appear border border-slate-200">
+                                    <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                                        <p className="text-slate-900 font-bold text-sm">Pharmacy Notifications</p>
+                                        <button onClick={() => setShowNotifs(false)} className="text-slate-500 hover:text-slate-900 text-xs">✕</button>
                                     </div>
                                     {notifications.length === 0 ? (
                                         <div className="py-8 text-center">
-                                            <Bell className="w-8 h-8 mx-auto text-slate-700 mb-2" />
-                                            <p className="text-slate-600 text-sm">No notifications yet</p>
+                                            <Bell className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                                            <p className="text-slate-500 text-sm">No notifications yet</p>
                                         </div>
                                     ) : notifications.map(n => (
-                                        <div key={n.id} className="px-4 py-3 border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
+                                        <div key={n.id} className="px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                                                    style={{ background: n.type === 'alert' ? 'rgba(244,63,94,0.15)' : n.type === 'refill' ? 'rgba(245,158,11,0.15)' : 'rgba(99,102,241,0.15)' }}>
-                                                    <Bell className="w-3.5 h-3.5" style={{ color: n.type === 'alert' ? '#f43f5e' : n.type === 'refill' ? '#f59e0b' : '#818cf8' }} />
+                                                    style={{ background: n.type === 'alert' ? 'rgba(220,38,38,0.12)' : n.type === 'refill' ? 'rgba(217,119,6,0.12)' : 'rgba(59,130,246,0.12)' }}>
+                                                    <Bell className="w-3.5 h-3.5" style={{ color: n.type === 'alert' ? '#dc2626' : n.type === 'refill' ? '#d97706' : '#2563eb' }} />
                                                 </div>
                                                 <div>
-                                                    <p className="text-slate-300 text-xs font-semibold">{n.subject || 'Message from Pharmacist'}</p>
-                                                    <p className="text-slate-500 text-[11px] mt-0.5 leading-relaxed">{n.enhanced || n.message}</p>
-                                                    <p className="text-slate-700 text-[10px] mt-1">{n.sent_at}</p>
+                                                    <p className="text-slate-900 text-xs font-semibold">{n.subject || 'Message from Pharmacist'}</p>
+                                                    <p className="text-slate-600 text-[11px] mt-0.5 leading-relaxed">{n.enhanced || n.message}</p>
+                                                    <p className="text-slate-500 text-[10px] mt-1">{n.sent_at}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -190,10 +187,10 @@ export default function Dashboard() {
                             )}
                         </div>
 
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
-                            style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)' }}>
-                            <Zap className="w-3.5 h-3.5 text-indigo-400" />
-                            <span className="text-indigo-300 text-xs font-semibold">Gemini Active</span>
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200"
+                            style={{ background: 'rgba(45,80,22,0.08)' }}>
+                            <Zap className="w-3.5 h-3.5 text-green-700" />
+                            <span className="text-green-700 text-xs font-semibold">Gemini Active</span>
                         </div>
                     </div>
                 </header>

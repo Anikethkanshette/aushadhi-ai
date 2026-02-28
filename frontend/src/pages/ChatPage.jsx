@@ -40,32 +40,32 @@ function ChatBubble({ msg }) {
     return (
         <div className={`flex gap-3 anim-up ${isBot ? '' : 'flex-row-reverse'}`}>
             {/* Avatar */}
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0`}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0`}
                 style={{
                     background: isBot
-                        ? 'linear-gradient(135deg, #4f46e5, #14b8a6)'
-                        : 'linear-gradient(135deg, #7c3aed, #db2777)',
+                        ? 'linear-gradient(135deg, #2d5016, #3d6b1f)'
+                        : 'linear-gradient(135deg, #3b82f6, #2563eb)',
                 }}>
                 {isBot ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
             </div>
 
             {/* Bubble */}
             <div className={`max-w-[76%] text-sm leading-relaxed`}>
-                <div className={`rounded-2xl px-4 py-3 ${isBot ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}
+                <div className={`rounded-xl px-4 py-3 ${isBot ? 'rounded-tl-sm' : 'rounded-tr-sm'}`}
                     style={isBot
-                        ? { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', color: '#e2e8f0' }
-                        : { background: 'linear-gradient(135deg, #4f46e5, #6366f1)', color: '#fff' }}>
+                        ? { background: 'rgba(248,250,251,0.8)', border: '1px solid rgba(59,130,246,0.12)', color: '#1f2937' }
+                        : { background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: '#fff' }}>
                     <p className="whitespace-pre-wrap">{msg.content}</p>
 
                     {/* Medicine results */}
                     {msg.medicines?.length > 0 && (
                         <div className="mt-3 space-y-2">
                             {msg.medicines.map(m => (
-                                <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
-                                    style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                <div key={m.id} className="flex items-center justify-between px-3 py-2 rounded-lg"
+                                    style={{ background: 'rgba(248,250,251,0.6)' }}>
                                     <div>
-                                        <p className="font-semibold text-xs">{m.name}</p>
-                                        <p className="text-[10px] opacity-70">₹{m.price} · {m.generic_name}</p>
+                                        <p className="font-semibold text-xs text-slate-900">{m.name}</p>
+                                        <p className="text-[10px] text-slate-600">₹{m.price} · {m.generic_name}</p>
                                     </div>
                                     <div className="flex flex-col items-end gap-1">
                                         <span className={`badge text-[9px] ${m.available ? 'badge-green' : 'badge-red'}`}>
@@ -81,7 +81,7 @@ function ChatBubble({ msg }) {
                     {/* Welfare */}
                     {msg.welfare_eligible && (
                         <div className="mt-2 text-[11px] rounded-lg px-2.5 py-1.5"
-                            style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>
+                            style={{ background: 'rgba(5,150,105,0.12)', color: '#059669' }}>
                             🎉 PMJAY eligible – 20% discount applied
                         </div>
                     )}
@@ -182,15 +182,14 @@ export default function ChatPage({ patient, apiBase }) {
         <div className="flex flex-col h-full" style={{ background: 'var(--c-surface)' }}>
 
             {/* ── Chat header ── */}
-            <div className="px-6 py-4 flex items-center justify-between flex-shrink-0"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(3,7,15,0.6)' }}>
+            <div className="px-6 py-4 flex items-center justify-between flex-shrink-0 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                        style={{ background: 'linear-gradient(135deg, #4f46e5, #14b8a6)', boxShadow: '0 0 16px rgba(99,102,241,0.35)' }}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center"
+                        style={{ background: 'linear-gradient(135deg, #2d5016, #3d6b1f)' }}>
                         <Bot className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-white font-black text-base flex items-center gap-1.5">
+                        <h2 className="text-slate-900 font-black text-base flex items-center gap-1.5">
                             AI Pharmacist
                             <span className="badge badge-teal text-[9px] py-0.5">
                                 <Sparkles className="w-2.5 h-2.5" /> Gemini
@@ -204,9 +203,9 @@ export default function ChatPage({ patient, apiBase }) {
                     {/* Language */}
                     <select value={lang} onChange={e => setLang(e.target.value)}
                         style={{
-                            fontSize: '11px', background: 'rgba(255,255,255,0.06)',
-                            border: '1px solid rgba(255,255,255,0.10)', borderRadius: '10px',
-                            padding: '6px 10px', color: '#94a3b8',
+                            fontSize: '11px', background: 'rgba(59,130,246,0.08)',
+                            border: '1px solid rgba(59,130,246,0.15)', borderRadius: '8px',
+                            padding: '6px 10px', color: '#4b5563',
                         }}>
                         <option value="en-IN">English</option>
                         <option value="hi-IN">हिंदी</option>
@@ -214,27 +213,27 @@ export default function ChatPage({ patient, apiBase }) {
 
                     {/* TTS */}
                     <button onClick={() => setTts(t => !t)}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                        style={{ background: ttsEnabled ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                        style={{ background: ttsEnabled ? 'rgba(45,80,22,0.12)' : 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}
                         title={ttsEnabled ? 'Voice on' : 'Voice off'}>
                         {ttsEnabled
-                            ? <Volume2 className="w-4 h-4 text-indigo-400" />
+                            ? <Volume2 className="w-4 h-4 text-green-700" />
                             : <VolumeX className="w-4 h-4 text-slate-600" />}
                     </button>
 
                     {/* Prescription upload */}
                     <input type="file" ref={fileRef} onChange={handleRxUpload} accept="image/*,.pdf" className="hidden" />
                     <button onClick={() => fileRef.current?.click()}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl transition-all"
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all"
                         style={hasPrescription
-                            ? { background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399' }
-                            : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: '#64748b' }}>
+                            ? { background: 'rgba(5,150,105,0.12)', border: '1px solid rgba(5,150,105,0.25)', color: '#059669' }
+                            : { background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', color: '#6b7280' }}>
                         <Upload className="w-3.5 h-3.5" />
                         {hasPrescription ? 'Rx ✓' : 'Upload Rx'}
                     </button>
                     {prescriptionFile && (
                         <button onClick={() => { setRxFile(null); setHasRx(false) }}
-                            className="text-slate-600 hover:text-red-400 transition-colors">
+                            className="text-slate-600 hover:text-red-600 transition-colors">
                             <X className="w-4 h-4" />
                         </button>
                     )}
@@ -242,18 +241,18 @@ export default function ChatPage({ patient, apiBase }) {
             </div>
 
             {/* ── Messages ── */}
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 scroll">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5 scroll" style={{ background: 'var(--c-surface)' }}>
                 {messages.map((msg, i) => <ChatBubble key={i} msg={msg} />)}
 
                 {/* Typing indicator */}
                 {loading && (
                     <div className="flex gap-3 anim-up">
-                        <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                            style={{ background: 'linear-gradient(135deg, #4f46e5, #14b8a6)' }}>
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                            style={{ background: 'linear-gradient(135deg, #2d5016, #3d6b1f)' }}>
                             <Bot className="w-4 h-4 text-white" />
                         </div>
-                        <div className="px-4 py-3 rounded-2xl rounded-tl-sm"
-                            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
+                        <div className="px-4 py-3 rounded-lg rounded-tl-sm"
+                            style={{ background: 'rgba(248,250,251,0.8)', border: '1px solid rgba(59,130,246,0.12)' }}>
                             <div className="flex gap-1.5 items-center h-4">
                                 {[0, 1, 2].map(i => (
                                     <span key={i} className="w-2 h-2 rounded-full"
@@ -268,18 +267,17 @@ export default function ChatPage({ patient, apiBase }) {
 
             {/* ── Quick prompts ── */}
             {messages.length <= 2 && (
-                <div className="px-6 py-3 flex gap-2 flex-wrap flex-shrink-0"
-                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <div className="px-6 py-3 flex gap-2 flex-wrap flex-shrink-0 border-t border-slate-200 bg-slate-50">
                     {QUICK_PROMPTS.map(p => (
                         <button key={p} onClick={() => sendMessage(p)}
-                            className="text-xs px-3 py-2 rounded-xl transition-all font-medium"
+                            className="text-xs px-3 py-2 rounded-lg transition-all font-medium"
                             style={{
-                                background: 'rgba(99,102,241,0.08)',
-                                border: '1px solid rgba(99,102,241,0.18)',
-                                color: '#a5b4fc',
+                                background: 'rgba(59,130,246,0.08)',
+                                border: '1px solid rgba(59,130,246,0.15)',
+                                color: '#2563eb',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.18)'; e.currentTarget.style.color = '#fff' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.08)'; e.currentTarget.style.color = '#a5b4fc' }}>
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.15)'; e.currentTarget.style.color = '#1f40af' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.08)'; e.currentTarget.style.color = '#2563eb' }}>
                             {p}
                         </button>
                     ))}
@@ -287,8 +285,7 @@ export default function ChatPage({ patient, apiBase }) {
             )}
 
             {/* ── Input bar ── */}
-            <div className="px-6 py-4 flex-shrink-0"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(3,7,15,0.5)' }}>
+            <div className="px-6 py-4 flex-shrink-0 border-t border-slate-200 bg-white/50 backdrop-blur-sm">
                 <div className="flex gap-3 items-end">
                     {/* Textarea */}
                     <div className="flex-1 relative">
@@ -306,35 +303,35 @@ export default function ChatPage({ patient, apiBase }) {
 
                     {/* Mic */}
                     <button onClick={() => listening ? stop() : start(lang)}
-                        className="w-12 h-12 rounded-xl flex items-center justify-center transition-all flex-shrink-0"
+                        className="w-12 h-12 rounded-lg flex items-center justify-center transition-all flex-shrink-0"
                         style={listening
-                            ? { background: 'linear-gradient(135deg, #be123c, #f43f5e)', boxShadow: '0 0 20px rgba(244,63,94,0.4)' }
-                            : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+                            ? { background: 'linear-gradient(135deg, #dc2626, #ef4444)', boxShadow: '0 0 16px rgba(220,38,38,0.3)' }
+                            : { background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)' }}
                         title={listening ? 'Stop recording' : 'Start voice input'}>
                         {listening
                             ? <MicOff className="w-5 h-5 text-white" />
-                            : <Mic className="w-5 h-5 text-slate-500" />}
+                            : <Mic className="w-5 h-5 text-slate-600" />}
                     </button>
 
                     {/* Send */}
                     <button onClick={() => sendMessage(input)}
                         disabled={!input.trim() || loading}
-                        className="btn btn-primary w-12 h-12 rounded-xl p-0 flex-shrink-0 flex items-center justify-center">
+                        className="btn btn-primary w-12 h-12 rounded-lg p-0 flex-shrink-0 flex items-center justify-center">
                         {loading ? <Loader2 className="w-5 h-5 anim-spin" /> : <Send className="w-5 h-5" />}
                     </button>
                 </div>
 
                 {/* Listening indicator */}
                 {listening && (
-                    <div className="flex items-center gap-2 mt-2.5 text-xs" style={{ color: '#f43f5e' }}>
-                        <span className="w-2 h-2 rounded-full anim-pulse" style={{ background: '#f43f5e' }} />
+                    <div className="flex items-center gap-2 mt-2.5 text-xs text-red-600">
+                        <span className="w-2 h-2 rounded-full anim-pulse bg-red-600" />
                         Listening… ({lang === 'hi-IN' ? 'हिंदी' : 'English'}) — speak now
                     </div>
                 )}
 
                 {/* Langfuse trace indicator */}
-                <div className="flex items-center gap-1.5 mt-2 text-[10px]" style={{ color: '#334155' }}>
-                    <Zap className="w-3 h-3 text-indigo-600" />
+                <div className="flex items-center gap-1.5 mt-2 text-[10px] text-slate-500">
+                    <Zap className="w-3 h-3 text-green-700" />
                     Powered by Gemini · Traced by Langfuse
                 </div>
             </div>

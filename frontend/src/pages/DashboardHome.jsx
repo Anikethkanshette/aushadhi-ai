@@ -66,10 +66,10 @@ export default function DashboardHome() {
     const chronic = patient?.chronic_conditions || []
 
     const healthCards = [
-        { label: 'Blood Pressure', value: health.blood_pressure || '—', unit: 'mmHg', icon: Activity, color: '#6366f1', trend: [65, 70, 68, 75, 72, 78, 74, 80, 76, 82] },
-        { label: 'Blood Sugar', value: health.blood_sugar || '—', unit: 'mg/dL', icon: DropletIcon, color: '#f43f5e', trend: [80, 95, 87, 100, 92, 105, 98, 88, 94, 102] },
-        { label: 'Cholesterol', value: health.cholesterol || '—', unit: 'mg/dL', icon: Heart, color: '#f59e0b', trend: [160, 170, 165, 175, 168, 172, 166, 170, 168, 165] },
-        { label: 'Pulse', value: health.pulse_rate || '—', unit: 'bpm', icon: Zap, color: '#10b981', trend: [68, 72, 70, 74, 71, 75, 72, 69, 73, 70] },
+        { label: 'Blood Pressure', value: health.blood_pressure || '—', unit: 'mmHg', icon: Activity, color: '#2563eb', trend: [65, 70, 68, 75, 72, 78, 74, 80, 76, 82] },
+        { label: 'Blood Sugar', value: health.blood_sugar || '—', unit: 'mg/dL', icon: DropletIcon, color: '#dc2626', trend: [80, 95, 87, 100, 92, 105, 98, 88, 94, 102] },
+        { label: 'Cholesterol', value: health.cholesterol || '—', unit: 'mg/dL', icon: Heart, color: '#d97706', trend: [160, 170, 165, 175, 168, 172, 166, 170, 168, 165] },
+        { label: 'Pulse', value: health.pulse_rate || '—', unit: 'bpm', icon: Zap, color: '#059669', trend: [68, 72, 70, 74, 71, 75, 72, 69, 73, 70] },
     ]
 
     const completedOrders = orders.filter(o => o.status === 'fulfilled' || o.status === 'completed')
@@ -79,17 +79,16 @@ export default function DashboardHome() {
         <div className="p-8 space-y-7 max-w-5xl anim-fade">
             {/* Hero welcome */}
             <div className="card-luxury p-7 relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-64 h-64 rounded-full opacity-10 pointer-events-none"
-                    style={{ background: 'radial-gradient(circle, #818cf8, transparent)', filter: 'blur(40px)', transform: 'translate(30%,-30%)' }} />
+                <div className="absolute right-0 top-0 w-64 h-64 rounded-full opacity-5 pointer-events-none"
+                    style={{ background: 'radial-gradient(circle, #3b82f6, transparent)', filter: 'blur(40px)', transform: 'translate(30%,-30%)' }} />
                 <div className="relative z-10 flex items-start justify-between flex-wrap gap-4">
                     <div>
-                        <p className="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-2">Health Overview · {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        <h2 className="text-3xl font-black text-white mb-2"
-                            style={{ fontFamily: "'Playfair Display', serif" }}>
+                        <p className="text-green-700 text-xs font-bold uppercase tracking-widest mb-2">Health Overview · {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <h2 className="text-3xl font-black text-slate-900 mb-2">
                             Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'},<br />
                             <span className="text-gradient">{patient?.name?.split(' ')[0]}</span>
                         </h2>
-                        <p className="text-slate-500 text-sm max-w-md">
+                        <p className="text-slate-600 text-sm max-w-md">
                             Your AI pharmacist is monitoring your health profile and is ready to assist with prescriptions, advice, and orders.
                         </p>
                     </div>
@@ -103,11 +102,11 @@ export default function DashboardHome() {
                 </div>
 
                 {/* Summary stats */}
-                <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/8">
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-slate-200">
                     {[
-                        { label: 'Total Orders', value: orders.length, color: '#6366f1' },
-                        { label: 'Completed', value: completedOrders.length, color: '#10b981' },
-                        { label: 'Total Spend', value: `₹${totalSpend.toFixed(0)}`, color: '#f59e0b' },
+                        { label: 'Total Orders', value: orders.length, color: '#2563eb' },
+                        { label: 'Completed', value: completedOrders.length, color: '#059669' },
+                        { label: 'Total Spend', value: `₹${totalSpend.toFixed(0)}`, color: '#d97706' },
                     ].map(({ label, value, color }) => (
                         <div key={label} className="text-center">
                             <p className="text-2xl font-black" style={{ color }}>{value}</p>
@@ -121,12 +120,12 @@ export default function DashboardHome() {
             {alerts.length > 0 && (
                 <div className="flex flex-col gap-2 anim-up">
                     {alerts.map(a => (
-                        <div key={a.order_id} className="flex items-center gap-4 px-5 py-4 rounded-2xl"
-                            style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.20)' }}>
-                            <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                        <div key={a.order_id} className="flex items-center gap-4 px-5 py-4 rounded-xl border"
+                            style={{ background: 'rgba(217,119,6,0.08)', borderColor: 'rgba(217,119,6,0.20)' }}>
+                            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                             <div className="flex-1">
-                                <p className="text-amber-300 font-semibold text-sm">Refill Due: {a.medicine_name}</p>
-                                <p className="text-slate-500 text-xs mt-0.5">Last ordered {a.purchase_date} · Consider reordering</p>
+                                <p className="text-amber-700 font-semibold text-sm">Refill Due: {a.medicine_name}</p>
+                                <p className="text-slate-600 text-xs mt-0.5">Last ordered {a.purchase_date} · Consider reordering</p>
                             </div>
                             <a href="/dashboard/medicines" className="btn btn-gold text-xs py-2 px-4">Order Now</a>
                         </div>
@@ -160,10 +159,10 @@ export default function DashboardHome() {
             {/* Available Medicines / Inventory */}
             <div className="card-luxury p-6">
                 <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-white font-black flex items-center gap-2">
-                        <Package className="w-5 h-5 text-indigo-400" /> Available Medicines
+                    <h3 className="text-slate-900 font-black flex items-center gap-2">
+                        <Package className="w-5 h-5 text-blue-600" /> Available Medicines
                     </h3>
-                    <a href="/dashboard/medicines" className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+                    <a href="/dashboard/medicines" className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
                         Browse all <ChevronRight className="w-3 h-3" />
                     </a>
                 </div>
@@ -178,20 +177,20 @@ export default function DashboardHome() {
                         {medicines.slice(0, 6).map((med) => {
                             const isLowStock = parseInt(med.stock_quantity) < parseInt(med.min_stock_level)
                             return (
-                                <div key={med.id} className="p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition-all cursor-pointer">
+                                <div key={med.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 hover:bg-blue-100/50 transition-all cursor-pointer">
                                     <div className="flex items-start justify-between mb-2">
                                         <div>
-                                            <p className="text-white font-bold text-sm line-clamp-1">{med.name}</p>
-                                            <p className="text-slate-500 text-xs mt-0.5">{med.generic_name}</p>
+                                            <p className="text-slate-900 font-bold text-sm line-clamp-1">{med.name}</p>
+                                            <p className="text-slate-600 text-xs mt-0.5">{med.generic_name}</p>
                                         </div>
                                         {isLowStock && <span className="badge badge-red text-[9px] flex-shrink-0">LOW</span>}
                                     </div>
                                     <div className="flex items-center justify-between mt-3">
                                         <div>
-                                            <p className="text-indigo-400 font-black text-sm">₹{parseFloat(med.price).toFixed(2)}</p>
+                                            <p className="text-blue-600 font-black text-sm">₹{parseFloat(med.price).toFixed(2)}</p>
                                             <p className="text-slate-600 text-xs mt-0.5">Stock: {med.stock_quantity}</p>
                                         </div>
-                                        <span className="text-[9px] px-2 py-1 rounded-lg bg-white/5 text-slate-400">{med.category}</span>
+                                        <span className="text-[9px] px-2 py-1 rounded-lg bg-slate-200 text-slate-700">{med.category}</span>
                                     </div>
                                 </div>
                             )
@@ -204,21 +203,21 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Current medications */}
                 <div className="card-luxury p-5">
-                    <h3 className="text-white font-bold mb-4 flex items-center gap-2">
-                        <Pill className="w-4 h-4 text-emerald-400" /> Current Medications
+                    <h3 className="text-slate-900 font-bold mb-4 flex items-center gap-2">
+                        <Pill className="w-4 h-4 text-emerald-600" /> Current Medications
                     </h3>
                     {meds.length === 0 ? (
                         <p className="text-slate-600 text-sm py-4 text-center">No medications on record</p>
                     ) : (
                         <div className="space-y-2">
                             {meds.map((m, i) => (
-                                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                                    style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }}>
+                                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg"
+                                    style={{ background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.15)' }}>
                                     <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                                        style={{ background: 'rgba(16,185,129,0.15)' }}>
-                                        <Pill className="w-3.5 h-3.5 text-emerald-400" />
+                                        style={{ background: 'rgba(5,150,105,0.15)' }}>
+                                        <Pill className="w-3.5 h-3.5 text-emerald-600" />
                                     </div>
-                                    <span className="text-slate-300 text-sm font-medium">{m}</span>
+                                    <span className="text-slate-700 text-sm font-medium">{m}</span>
                                 </div>
                             ))}
                         </div>
@@ -227,8 +226,8 @@ export default function DashboardHome() {
 
                 {/* Health profile */}
                 <div className="card-luxury p-5 space-y-4">
-                    <h3 className="text-white font-bold flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-indigo-400" /> Health Profile
+                    <h3 className="text-slate-900 font-bold flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-blue-600" /> Health Profile
                     </h3>
                     {[
                         { label: 'Conditions', values: chronic, color: '#f59e0b', emptyMsg: 'No chronic conditions' },
@@ -252,10 +251,10 @@ export default function DashboardHome() {
             {/* Recent orders */}
             <div className="card-luxury p-5">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-bold flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4 text-amber-400" /> Recent Orders
+                    <h3 className="text-slate-900 font-bold flex items-center gap-2">
+                        <ShoppingBag className="w-4 h-4 text-amber-600" /> Recent Orders
                     </h3>
-                    <a href="/dashboard/orders" className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+                    <a href="/dashboard/orders" className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1">
                         View all <ChevronRight className="w-3 h-3" />
                     </a>
                 </div>
@@ -264,19 +263,19 @@ export default function DashboardHome() {
                 ) : (
                     <div className="space-y-2">
                         {orders.slice(0, 4).map(o => (
-                            <div key={o.order_id} className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
+                            <div key={o.order_id} className="flex items-center justify-between py-3 border-b border-slate-200 last:border-0">
                                 <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-                                        style={{ background: 'rgba(99,102,241,0.15)' }}>
-                                        <Pill className="w-4 h-4 text-indigo-400" />
+                                        style={{ background: 'rgba(59,130,246,0.12)' }}>
+                                        <Pill className="w-4 h-4 text-blue-600" />
                                     </div>
                                     <div>
-                                        <p className="text-white text-sm font-semibold">{o.medicine_name}</p>
+                                        <p className="text-slate-900 text-sm font-semibold">{o.medicine_name}</p>
                                         <p className="text-slate-600 text-xs">Qty {o.quantity} · {o.purchase_date}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-white font-bold text-sm">₹{parseFloat(o.total_amount || 0).toFixed(2)}</p>
+                                    <p className="text-slate-900 font-bold text-sm">₹{parseFloat(o.total_amount || 0).toFixed(2)}</p>
                                     <span className={`badge text-[9px] ${o.status === 'completed' || o.status === 'fulfilled' ? 'badge-green' : 'badge-amber'}`}>
                                         {o.status}
                                     </span>
