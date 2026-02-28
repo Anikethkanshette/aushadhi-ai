@@ -31,6 +31,7 @@ export default function MedicineSearch() {
     const [checkoutState, setCheckoutState] = useState('idle')
     const [checkoutResult, setCheckoutResult] = useState(null)
     const [checkoutError, setCheckoutError] = useState('')
+    const [prescriptionFile, setPrescriptionFile] = useState(null)
 
     const [cart, setCart] = useState([])
     const [showCart, setShowCart] = useState(false)
@@ -94,6 +95,7 @@ export default function MedicineSearch() {
         setCheckoutMed(med)
         setQuantity(1)
         setHasRx(false)
+        setPrescriptionFile(null)
         setCheckoutState('idle')
         setCheckoutResult(null)
         setCheckoutError('')
@@ -488,6 +490,22 @@ export default function MedicineSearch() {
                                                         </div>
                                                         <span className="text-slate-300 text-sm">I have a valid prescription</span>
                                                     </label>
+                                                    <div className="mt-3">
+                                                        <label className="block text-[11px] text-slate-500 mb-1">Upload prescription (optional for records)</label>
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*,.pdf"
+                                                            onChange={e => {
+                                                                const file = e.target.files?.[0] || null
+                                                                setPrescriptionFile(file)
+                                                                if (file) setHasRx(true)
+                                                            }}
+                                                            className="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-indigo-500/20 file:text-indigo-300"
+                                                        />
+                                                        {prescriptionFile && (
+                                                            <p className="text-[11px] text-emerald-400 mt-1">Attached: {prescriptionFile.name}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
