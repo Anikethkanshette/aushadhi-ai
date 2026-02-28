@@ -6,6 +6,39 @@ Centralizes all settings with environment variable support.
 import os
 from typing import Literal
 import logging
+from dotenv import load_dotenv
+
+
+def _sanitize_env_value(value: str) -> str:
+    return str(value or "").strip().strip('"').strip("'")
+
+
+def _bootstrap_environment() -> None:
+    """Load environment variables from reliable locations before settings are read."""
+    backend_dir = os.path.dirname(__file__)
+    project_root = os.path.abspath(os.path.join(backend_dir, ".."))
+
+    candidate_files = [
+        os.path.join(project_root, ".env"),
+        os.path.join(backend_dir, ".env"),
+    ]
+
+    for env_file in candidate_files:
+        if os.path.exists(env_file):
+            load_dotenv(env_file, override=False)
+
+    # Backward-compatible alias for common typo
+    if not os.getenv("GEMINI_API_KEY") and os.getenv("GEMINAI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = _sanitize_env_value(os.getenv("GEMINAI_API_KEY", ""))
+
+    # Normalize key values (remove accidental quotes/spaces)
+    for key in ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_MODEL"]:
+        current = os.getenv(key)
+        if current is not None:
+            os.environ[key] = _sanitize_env_value(current)
+
+
+_bootstrap_environment()
 
 
 class Settings:
