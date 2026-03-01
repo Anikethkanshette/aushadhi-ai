@@ -112,6 +112,8 @@ class OrderCreate(BaseModel):
     prescription_file_name: Optional[str] = None
     prescription_scan_summary: Optional[str] = None
     prescription_verified: bool = False
+    prescription_record_id: Optional[str] = None
+    prescription_valid_until: Optional[str] = None
     
     class Config:
         schema_extra = {
@@ -449,6 +451,14 @@ class ScanPrescriptionResponse(BaseModel):
     """Prescription scan response."""
     message: str
     medicines: List[ScannedMedicine] = []
+    scan_duration_ms: Optional[int] = None
+    unavailable_items: List[str] = []
+    short_availability_eta: Optional[str] = None
+    extracted_patient_name: Optional[str] = None
+    patient_name_match: Optional[bool] = None
+    patient_name_warning: Optional[str] = None
+    prescription_record_id: Optional[str] = None
+    prescription_valid_until: Optional[str] = None
     
     class Config:
         schema_extra = {
@@ -461,6 +471,12 @@ class ScanPrescriptionResponse(BaseModel):
                         "quantity": 10,
                         "available": True
                     }
-                ]
+                ],
+                "scan_duration_ms": 1200,
+                "unavailable_items": ["Amoxicillin 500mg"],
+                "short_availability_eta": "30-60 minutes",
+                "extracted_patient_name": "Rajesh Kumar",
+                "patient_name_match": True,
+                "patient_name_warning": None
             }
         }

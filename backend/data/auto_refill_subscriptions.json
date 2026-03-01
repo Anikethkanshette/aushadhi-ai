@@ -1,0 +1,80 @@
+[
+  {
+    "subscription_id": "AR-47330FB5",
+    "abha_id": "1234-5678-9012",
+    "medicine_name": "metformin 2",
+    "quantity": 2,
+    "channels": [
+      "whatsapp",
+      "email",
+      "sms"
+    ],
+    "active": false,
+    "created_at": "2026-02-28T19:51:53.555612",
+    "cancelled_at": "2026-02-28T20:09:04.898751"
+  },
+  {
+    "subscription_id": "AR-6D6185C1",
+    "abha_id": "1234-5678-9012",
+    "patient_id": "P001",
+    "patient_name": "Rajesh Kumar",
+    "medicine_name": "SAW PALMETO SAGEPALME 350mg",
+    "quantity": 1,
+    "channels": [
+      "whatsapp",
+      "email",
+      "sms"
+    ],
+    "active": false,
+    "created_at": "2026-02-28T20:08:54.698921",
+    "cancelled_at": "2026-02-28T20:09:01.419908"
+  },
+  {
+    "subscription_id": "AR-5EF3409A",
+    "abha_id": "1234-5678-9012",
+    "patient_id": "P001",
+    "patient_name": "Rajesh Kumar",
+    "medicine_name": "Vitasprint Pro Energie",
+    "quantity": 1,
+    "channels": [
+      "whatsapp",
+      "email",
+      "sms"
+    ],
+    "active": false,
+    "created_at": "2026-02-28T23:18:50.428387",
+    "cancelled_at": "2026-02-28T23:18:54.243861"
+  },
+  {
+    "subscription_id": "AR-3425D924",
+    "abha_id": "1234-5678-9012",
+    "patient_id": "P001",
+    "patient_name": "Rajesh Kumar",
+    "medicine_name": "Paracetamol apodiscounter 500mg Tabletten",
+    "quantity": 1,
+    "channels": [
+      "whatsapp",
+      "email",
+      "sms"
+    ],
+    "active": false,
+    "created_at": "2026-03-01T01:08:42.120798",
+    "cancelled_at": "2026-03-01T01:09:08.563003"
+  },
+  {
+    "subscription_id": "AR-3DC58E3E",
+    "abha_id": "1234-5678-9012",
+    "patient_id": "P001",
+    "patient_name": "Rajesh Kumar",
+    "medicine_name": "Panthenol Spray 46.3mg/g Schaum",
+    "quantity": 1,
+    "channels": [
+      "whatsapp",
+      "email",
+      "sms"
+    ],
+    "active": false,
+    "created_at": "2026-03-01T04:01:57.758053",
+    "cancelled_at": "2026-03-01T04:02:38.567587"
+  }
+]

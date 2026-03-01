@@ -42,6 +42,15 @@ export default function OrderHistory({ patient, apiBase }) {
     const [expanded, setExpanded] = useState(null)
     const [loading, setLoading] = useState(true)
     const [actionLoading, setActionLoading] = useState(null)
+
+    const formatCancelError = (detail) => {
+        const raw = String(detail || '')
+        const lowered = raw.toLowerCase()
+        if (lowered.includes('only be cancelled within 1 hour') || lowered.includes('within 1 hour of placement')) {
+            return 'This order can only be cancelled within 1 hour of placing it.'
+        }
+        return raw || 'Unable to cancel order right now.'
+    }
     const [actionError, setActionError] = useState('')
 
     useEffect(() => {
@@ -73,7 +82,7 @@ export default function OrderHistory({ patient, apiBase }) {
             const res = await axios.get(`${resolvedApiBase}/orders/?abha_id=${encodeURIComponent(currentPatient.abha_id)}`)
             setOrders((res.data.orders || []).reverse())
         } catch (err) {
-            setActionError(err?.response?.data?.detail || 'Unable to cancel order right now.')
+            setActionError(formatCancelError(err?.response?.data?.detail))
         } finally {
             setActionLoading(null)
         }

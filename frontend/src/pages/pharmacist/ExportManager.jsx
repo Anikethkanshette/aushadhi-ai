@@ -4,6 +4,7 @@ import {
     Download, FileSpreadsheet, Users, ShoppingBag, Package,
     CheckCircle, Loader2, TrendingUp, AlertTriangle, RefreshCw
 } from 'lucide-react'
+import { API_CONFIG } from '../../config'
 
 const EXPORTS = [
     {
@@ -42,6 +43,7 @@ const EXPORTS = [
 ]
 
 export default function ExportManager({ apiBase }) {
+    const resolvedApiBase = apiBase || API_CONFIG.BASE_URL
     const [status, setStatus] = useState({})   // { id: 'loading'|'done'|'error' }
     const [counts, setCounts] = useState({ orders: 0, products: 0, patients: 0 })
 
@@ -49,24 +51,28 @@ export default function ExportManager({ apiBase }) {
         const fetchCounts = async () => {
             try {
                 const [oRes, pRes] = await Promise.allSettled([
-                    axios.get(`${apiBase}/pharmacist/stats`),
-                    axios.get(`${apiBase}/patients/`),
+                    axios.get(`${resolvedApiBase}/pharmacist/stats`),
+                    axios.get(`${resolvedApiBase}/patients/`),
                 ])
                 if (oRes.status === 'fulfilled') {
-                    setCounts(c => ({ ...c, orders: oRes.value.data.total_orders || 0, products: oRes.value.data.total_medicines || 0 }))
+                    const stats = oRes.value?.data?.data || oRes.value?.data || {}
+                    setCounts(c => ({ ...c, orders: stats.total_orders || 0, products: stats.total_medicines || 0 }))
                 }
                 if (pRes.status === 'fulfilled') {
-                    setCounts(c => ({ ...c, patients: pRes.value.data.total || 0 }))
+                    const patientData = pRes.value?.data?.data || pRes.value?.data || {}
+                    setCounts(c => ({ ...c, patients: patientData.total || 0 }))
                 }
             } catch { }
         }
         fetchCounts()
-    }, [apiBase])
+        const id = setInterval(fetchCounts, 15000)
+        return () => clearInterval(id)
+    }, [resolvedApiBase])
 
     const handleDownload = async (exp) => {
         setStatus(s => ({ ...s, [exp.id]: 'loading' }))
         try {
-            const res = await axios.get(`${apiBase}${exp.endpoint}`, { responseType: 'blob' })
+            const res = await axios.get(`${resolvedApiBase}${exp.endpoint}`, { responseType: 'blob' })
             const url = URL.createObjectURL(new Blob([res.data]))
             const a = document.createElement('a')
             a.href = url; a.download = exp.filename; a.click()

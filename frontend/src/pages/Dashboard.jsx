@@ -157,7 +157,7 @@ export default function Dashboard() {
             {/* Main */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Topbar */}
-                <header className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0 relative"
+                <header className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0 relative z-30"
                     style={{ background: 'rgba(3,7,15,0.8)', backdropFilter: 'blur(12px)' }}>
                     <div>
                         <h1 className="text-white font-black text-base">
@@ -179,7 +179,7 @@ export default function Dashboard() {
                             </button>
 
                             {showNotifs && (
-                                <div className="absolute right-0 top-11 w-80 glass z-50 overflow-hidden shadow-2xl anim-appear">
+                                <div className="absolute right-0 top-11 w-80 glass z-[80] overflow-hidden shadow-2xl anim-appear">
                                     <div className="px-4 py-3 border-b border-white/8 flex items-center justify-between">
                                         <p className="text-white font-bold text-sm">Pharmacy Notifications</p>
                                         <div className="flex items-center gap-2">

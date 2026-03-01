@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-from database import load_orders, save_order, get_patient_orders, get_medicine_by_id, update_medicine_stock, update_order_status
+from database import load_orders, save_order, get_patient_orders, get_medicine_by_id, update_medicine_stock, update_order_status, get_active_prescription
 from models import OrderCreate
 import uuid
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from ledger import ledger_db
 from agents.prescription_agent import PrescriptionAgent
@@ -25,8 +25,40 @@ def create_order(order: OrderCreate):
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
 
+    is_rx_required = str(medicine.get("prescription_required", "false")).lower() == "true"
+    active_prescription = None
+    if not is_rx_required:
+        today_str = str(date.today())
+        patient_orders = get_patient_orders(abha_id=order.abha_id)
+        same_day_reorder = next(
+            (
+                existing for existing in patient_orders
+                if str(existing.get("medicine_id", "")) == str(order.medicine_id)
+                and str(existing.get("purchase_date", "")) == today_str
+            ),
+            None,
+        )
+        if same_day_reorder:
+            raise HTTPException(
+                status_code=400,
+                detail="Normal tablets can only be ordered once per day. Please reorder tomorrow.",
+            )
+    else:
+        if not order.has_prescription:
+            active_prescription = get_active_prescription(
+                abha_id=order.abha_id,
+                medicine_id=order.medicine_id,
+            )
+            if not active_prescription:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No active prescription found for this medicine. Please upload a valid prescription.",
+                )
+
+    effective_has_prescription = bool(order.has_prescription or active_prescription)
+
     # 1. Validation via Prescription Agent
-    rx_res = rx_agent.validate_prescription(order.medicine_id, order.has_prescription, order.abha_id)
+    rx_res = rx_agent.validate_prescription(order.medicine_id, effective_has_prescription, order.abha_id)
     if rx_res["status"] == "rejected":
         raise HTTPException(status_code=400, detail=rx_res["message"])
 
@@ -73,6 +105,7 @@ def create_order(order: OrderCreate):
 
     # Finish saving order details
     today = date.today()
+    created_at = datetime.now()
     next_refill = today + timedelta(days=30)
     
     delivery_res = delivery_agent.schedule_delivery(order_id, "100001") # Mock ZIP
@@ -87,14 +120,17 @@ def create_order(order: OrderCreate):
         "quantity": str(order.quantity),
         "dosage_frequency": order.dosage_frequency,
         "purchase_date": str(today),
+        "created_at": created_at.isoformat(),
         "next_refill_date": str(next_refill),
         "total_amount": str(final_amount),
         "status": "completed",
         "tx_id": tx_id,
-        "has_prescription": bool(order.has_prescription),
+        "has_prescription": effective_has_prescription,
         "prescription_file_name": order.prescription_file_name or "",
         "prescription_scan_summary": order.prescription_scan_summary or "",
-        "prescription_verified": bool(order.prescription_verified),
+        "prescription_verified": bool(order.prescription_verified or active_prescription),
+        "prescription_record_id": order.prescription_record_id or (active_prescription or {}).get("record_id", ""),
+        "prescription_valid_until": order.prescription_valid_until or (active_prescription or {}).get("valid_until", ""),
     }
 
     save_order(new_order)
@@ -157,6 +193,22 @@ def cancel_order(order_id: str, body: Optional[dict] = None):
     status = (order.get("status") or "").lower()
     if status in ["cancelled", "rejected"]:
         raise HTTPException(status_code=400, detail=f"Order already {status}")
+
+    created_at_raw = order.get("created_at")
+    if not created_at_raw:
+        raise HTTPException(
+            status_code=400,
+            detail="This order cannot be cancelled automatically because cancellation window cannot be verified."
+        )
+
+    try:
+        created_at = datetime.fromisoformat(str(created_at_raw).replace("Z", "+00:00"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid order timestamp; cancellation not allowed")
+
+    elapsed = datetime.now(created_at.tzinfo) - created_at
+    if elapsed > timedelta(hours=1):
+        raise HTTPException(status_code=400, detail="Order can only be cancelled within 1 hour of placement")
 
     qty = int(order.get("quantity", 0) or 0)
     if qty <= 0:

@@ -1,10 +1,12 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 import api from '../api'
-import { API_ENDPOINTS } from '../config'
+import { API_CONFIG, API_ENDPOINTS } from '../config'
 import { useAppContext } from '../context/AppContext'
 import {
     Heart, Activity, Pill, ShoppingBag, AlertCircle, TrendingUp,
-    Sparkles, ChevronRight, DropletIcon, Zap, Thermometer, Shield, Package, Loader2
+    Sparkles, ChevronRight, DropletIcon, Zap, Thermometer, Shield, Package, Loader2, Upload
 } from 'lucide-react'
 
 const SPARKLINE_H = [30, 45, 35, 60, 50, 70, 55, 80, 65, 90, 75, 100]
@@ -21,6 +23,7 @@ function Sparkline({ data = SPARKLINE_H, color = '#6366f1' }) {
 
 export default function DashboardHome() {
     const { patient } = useAppContext()
+    const navigate = useNavigate()
     const [orders, setOrders] = useState([])
     const [medicines, setMedicines] = useState([])
     const [alerts, setAlerts] = useState([])
@@ -29,6 +32,19 @@ export default function DashboardHome() {
     const [refillStatus, setRefillStatus] = useState({})
     const [selectedRefillMedicine, setSelectedRefillMedicine] = useState('')
     const [autoRefillPlans, setAutoRefillPlans] = useState([])
+    const [rxScanLoading, setRxScanLoading] = useState(false)
+    const [rxScanError, setRxScanError] = useState('')
+    const [rxScanSummary, setRxScanSummary] = useState('')
+    const [rxScanMatches, setRxScanMatches] = useState([])
+    const [rxScanUnavailable, setRxScanUnavailable] = useState([])
+    const [rxScanEta, setRxScanEta] = useState('')
+    const [rxPatientWarning, setRxPatientWarning] = useState('')
+    const [notifyDone, setNotifyDone] = useState([])
+    const [notifyLoading, setNotifyLoading] = useState('')
+    const [activePrescriptions, setActivePrescriptions] = useState([])
+    const [expiredPrescriptions, setExpiredPrescriptions] = useState([])
+    const [prescriptionView, setPrescriptionView] = useState('active')
+    const rxFileRef = useRef(null)
 
     const loadAutoRefillPlans = useCallback(async () => {
         if (!patient?.abha_id) return
@@ -74,6 +90,16 @@ export default function DashboardHome() {
         loadOrdersAndAlerts()
         fetchMedicines()
         loadAutoRefillPlans()
+
+        api.get(API_ENDPOINTS.AGENT_PRESCRIPTION_HISTORY(patient?.abha_id))
+            .then(res => {
+                setActivePrescriptions(res.data?.active_prescriptions || [])
+                setExpiredPrescriptions(res.data?.expired_prescriptions || [])
+            })
+            .catch(() => {
+                setActivePrescriptions([])
+                setExpiredPrescriptions([])
+            })
     }, [patient, loadOrdersAndAlerts, loadAutoRefillPlans])
 
     const handleAutoRefill = async (alertOrder) => {
@@ -152,6 +178,102 @@ export default function DashboardHome() {
             await loadAutoRefillPlans()
         } finally {
             setRefillProcessing(prev => ({ ...prev, [key]: false }))
+        }
+    }
+
+    const requestAvailabilityNotification = async (item) => {
+        if (!patient?.abha_id) return
+        const key = `${item?.extracted_name || ''}-${item?.dosage || ''}`
+        if (!key || notifyDone.includes(key)) return
+
+        setNotifyLoading(key)
+        try {
+            await api.post(API_ENDPOINTS.AGENT_EXECUTE, {
+                agent: 'notification',
+                action: 'generate',
+                patient_id: patient?.patient_id,
+                patient_name: patient?.name,
+                abha_id: patient?.abha_id,
+                payload: {
+                    event_type: 'refill_reminder',
+                    details: {
+                        medicine_name: item?.extracted_name || 'Medicine',
+                        dosage: item?.dosage || '',
+                        requested_via: 'overview_prescription_scan',
+                        short_availability_eta: rxScanEta || '30-60 minutes',
+                    },
+                },
+            })
+            setNotifyDone(prev => [...prev, key])
+        } catch {
+        } finally {
+            setNotifyLoading('')
+        }
+    }
+
+    const handleOverviewRxUpload = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        setRxScanLoading(true)
+        setRxScanError('')
+        setRxScanSummary('')
+        setRxScanMatches([])
+        setRxScanUnavailable([])
+        setRxScanEta('')
+        setRxPatientWarning('')
+        setNotifyDone([])
+        setNotifyLoading('')
+
+        try {
+            const formData = new FormData()
+            formData.append('image', file)
+            formData.append('patient_name', patient?.name || '')
+            formData.append('abha_id', patient?.abha_id || '')
+
+            const res = await axios.post(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AGENT_SCAN}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+                timeout: 45000,
+            })
+
+            const scanned = Array.isArray(res?.data?.medicines) ? res.data.medicines : []
+            const matches = scanned
+                .filter(item => item?.matched_medicine)
+                .map(item => ({
+                    id: item.matched_medicine.id,
+                    name: item.matched_medicine.name,
+                    medicine: item.matched_medicine,
+                    dosage: item?.dosage || '',
+                    available: !!item?.available,
+                }))
+            const unavailable = scanned.filter(item => !item?.available)
+
+            setRxScanMatches(matches)
+            setRxScanUnavailable(unavailable)
+            setRxScanEta(res?.data?.short_availability_eta || '30-60 minutes')
+            setRxPatientWarning(res?.data?.patient_name_warning || '')
+            setRxScanSummary(
+                `${res?.data?.message || 'Prescription scanned'}${res?.data?.scan_duration_ms ? ` · ${(Number(res.data.scan_duration_ms) / 1000).toFixed(1)}s` : ''}`
+            )
+
+            for (const item of unavailable) {
+                await requestAvailabilityNotification(item)
+            }
+
+            const availableMatches = matches.filter(m => m.available).map(m => m.medicine).filter(Boolean)
+            if (availableMatches.length > 0) {
+                sessionStorage.setItem('aushadhi_chat_handoff', JSON.stringify({
+                    source: 'overview_prescription_scan',
+                    medicines: availableMatches,
+                    prompt: 'I scanned your prescription. Do you want to order these medicines?',
+                }))
+                navigate('/dashboard/chat')
+            }
+        } catch (error) {
+            setRxScanError(error?.response?.data?.detail || 'Unable to scan prescription right now. Please try a clearer image.')
+        } finally {
+            setRxScanLoading(false)
+            if (e?.target) e.target.value = ''
         }
     }
 
@@ -245,6 +367,61 @@ export default function DashboardHome() {
                 </div>
             )}
 
+            {/* Active prescriptions */}
+            <div className="card-luxury p-5">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                        <h3 className="text-white font-bold text-sm">My Active Prescriptions</h3>
+                        <p className="text-slate-500 text-xs mt-1">Uploaded prescriptions are stored and remain usable until validity ends.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setPrescriptionView('active')}
+                            className={`text-[10px] px-2 py-1 rounded-lg transition-all ${prescriptionView === 'active' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-white/5 text-slate-500 border border-transparent'}`}
+                        >
+                            Active ({activePrescriptions.length})
+                        </button>
+                        <button
+                            onClick={() => setPrescriptionView('expired')}
+                            className={`text-[10px] px-2 py-1 rounded-lg transition-all ${prescriptionView === 'expired' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-white/5 text-slate-500 border border-transparent'}`}
+                        >
+                            Expired ({expiredPrescriptions.length})
+                        </button>
+                    </div>
+                </div>
+
+                {(prescriptionView === 'active' ? activePrescriptions : expiredPrescriptions).length === 0 ? (
+                    <p className="text-slate-600 text-xs">
+                        {prescriptionView === 'active'
+                            ? 'No active prescriptions right now. Upload one during medicine checkout.'
+                            : 'No expired prescriptions found.'}
+                    </p>
+                ) : (
+                    <div className="space-y-2">
+                        {(prescriptionView === 'active' ? activePrescriptions : expiredPrescriptions).slice(0, 5).map((record) => (
+                            <div key={record.record_id} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+                                <div className="flex items-center justify-between gap-3">
+                                    <p className="text-slate-300 text-xs font-mono">{record.record_id}</p>
+                                    <p className={`${prescriptionView === 'active' ? 'text-emerald-400' : 'text-amber-300'} text-[11px] font-semibold`}>
+                                        {prescriptionView === 'active' ? 'Valid till' : 'Expired on'}: {record.valid_until}
+                                    </p>
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                    {(record.medicines || []).slice(0, 3).map((m, idx) => (
+                                        <span key={`${record.record_id}-${idx}`} className="badge badge-teal text-[10px]">
+                                            {m.extracted_name}{m.dosage ? ` (${m.dosage})` : ''}
+                                        </span>
+                                    ))}
+                                    {(record.medicines || []).length > 3 && (
+                                        <span className="badge badge-indigo text-[10px]">+{(record.medicines || []).length - 3} more</span>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {/* Auto refill agent (always visible) */}
             <div className="card-luxury p-5">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -313,6 +490,70 @@ export default function DashboardHome() {
                 )}
                 {refillCandidates.length === 0 && (
                     <p className="text-[11px] text-slate-600 mt-3">No previous medicines found yet. Place one order to enable quick auto refill selection.</p>
+                )}
+            </div>
+
+            <div className="card-luxury p-5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                        <h3 className="text-white font-bold text-sm">Prescription Scanner</h3>
+                        <p className="text-slate-500 text-xs mt-1">Upload prescription to instantly check inventory. Unavailable medicines are marked as available soon and notification requests are sent.</p>
+                    </div>
+                    <div>
+                        <input ref={rxFileRef} type="file" accept="image/*,.pdf" onChange={handleOverviewRxUpload} className="hidden" />
+                        <button
+                            onClick={() => rxFileRef.current?.click()}
+                            className="btn btn-teal text-xs py-2 px-4"
+                            disabled={rxScanLoading}
+                        >
+                            {rxScanLoading ? 'Scanning…' : <><Upload className="w-3.5 h-3.5" /> Upload Prescription</>}
+                        </button>
+                    </div>
+                </div>
+
+                {rxScanSummary && (
+                    <p className="text-[11px] text-emerald-400 mt-3">{rxScanSummary}</p>
+                )}
+                {rxScanError && (
+                    <p className="text-[11px] text-red-400 mt-3">{rxScanError}</p>
+                )}
+                {rxPatientWarning && (
+                    <p className="text-[11px] text-amber-300 mt-3">⚠️ {rxPatientWarning}</p>
+                )}
+
+                {rxScanMatches.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                        <p className="text-[11px] text-slate-400 uppercase tracking-wide font-semibold">Available in Inventory</p>
+                        {rxScanMatches.filter(m => m.available).map(item => (
+                            <div key={`avail-${item.id}-${item.dosage}`} className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-2 flex items-center justify-between">
+                                <p className="text-sm text-emerald-100 font-semibold">{item.name}{item.dosage ? ` (${item.dosage})` : ''}</p>
+                                <span className="badge badge-green text-[10px]">In Stock</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {rxScanUnavailable.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                        <p className="text-[11px] text-amber-300 uppercase tracking-wide font-semibold">Unavailable Now · Available Soon ({rxScanEta || '30-60 minutes'})</p>
+                        {rxScanUnavailable.map(item => {
+                            const key = `${item?.extracted_name || ''}-${item?.dosage || ''}`
+                            const done = notifyDone.includes(key)
+                            const loading = notifyLoading === key
+                            return (
+                                <div key={`unavail-${key}`} className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 flex items-center justify-between gap-2">
+                                    <p className="text-sm text-amber-100 font-semibold">{item.extracted_name}{item.dosage ? ` (${item.dosage})` : ''}</p>
+                                    <button
+                                        onClick={() => requestAvailabilityNotification(item)}
+                                        disabled={done || loading}
+                                        className="text-[10px] px-2 py-1 rounded-md border border-amber-300/25 bg-amber-200/10 text-amber-100 disabled:opacity-60"
+                                    >
+                                        {loading ? 'Notifying…' : done ? 'Notified ✓' : 'Notify me'}
+                                    </button>
+                                </div>
+                            )
+                        })}
+                    </div>
                 )}
             </div>
 

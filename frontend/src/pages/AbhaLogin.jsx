@@ -132,6 +132,26 @@ export default function AbhaLogin() {
                         <span className="text-white font-black text-xl">AushadhiAI</span>
                     </div>
 
+                    <div className="med-agent-stage mb-5" aria-hidden="true">
+                        <div className="med-agent-halo" />
+                        <div className="med-agent-core">
+                            <ShieldCheck className="w-6 h-6 text-indigo-300" />
+                            <span className="med-agent-pulse" />
+                        </div>
+                        <span className="med-agent-ring ring-a" />
+                        <span className="med-agent-ring ring-b" />
+                        <div className="med-agent-chip chip-a">
+                            <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+                        </div>
+                        <div className="med-agent-chip chip-b">
+                            <Mic className="w-3.5 h-3.5 text-teal-300" />
+                        </div>
+                        <div className="med-agent-chip chip-c">
+                            <Heart className="w-3.5 h-3.5 text-rose-300" />
+                        </div>
+                        <p className="med-agent-label">AI Medical Agent</p>
+                    </div>
+
                     <div className="card-luxury p-8">
                         <div className="mb-8">
                             <h2 className="text-2xl font-black text-white mb-1.5">Patient Login</h2>

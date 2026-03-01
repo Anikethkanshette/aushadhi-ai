@@ -68,7 +68,7 @@ def pharmacist_login(credentials: PharmacistLogin):
 
 @router.get("/stats")
 def get_dashboard_stats():
-    orders = get_all_orders()
+    orders = get_all_orders(force_refresh=True)
     medicines = load_medicines()
     
     pending_orders = [o for o in orders if o["status"].lower() == "pending"]
@@ -91,7 +91,7 @@ def get_dashboard_stats():
 
 @router.get("/orders")
 def get_pharmacist_orders():
-    orders = get_all_orders()
+    orders = get_all_orders(force_refresh=True)
     # Return newest first
     return {
         "status": "success",
@@ -372,7 +372,7 @@ def get_patient_notifications(patient_id: str):
 def export_orders_excel():
     if not XLSX_OK:
         raise HTTPException(status_code=500, detail="openpyxl not installed")
-    orders = get_all_orders()
+    orders = get_all_orders(force_refresh=True)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Order History"
