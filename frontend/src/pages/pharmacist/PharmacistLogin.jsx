@@ -37,7 +37,15 @@ export default function PharmacistLogin() {
     }
 
     return (
-        <div className="min-h-screen page-bg flex">
+        <div className="min-h-screen page-bg flex relative overflow-hidden">
+            <div className="hackfusion-bg" aria-hidden="true">
+                <span className="hackfusion-grid" />
+                <span className="hackfusion-plane plane-a" />
+                <span className="hackfusion-plane plane-b" />
+                <span className="hackfusion-glow" />
+                <p className="hackfusion-title" data-text="HackFusion 3.0">HackFusion 3.0</p>
+            </div>
+
             {/* Left */}
             <div className="hidden lg:flex flex-col justify-between w-[52%] px-16 py-14 relative overflow-hidden">
                 <div className="absolute -top-40 -left-40 w-[500px] h-[500px] rounded-full opacity-15"

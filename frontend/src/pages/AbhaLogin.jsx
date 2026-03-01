@@ -47,7 +47,14 @@ export default function AbhaLogin() {
     const fill = (p) => { setAbhaId(p.abha); setPassword(p.password); setError('') }
 
     return (
-        <div className="min-h-screen page-bg flex">
+        <div className="min-h-screen page-bg flex relative overflow-hidden">
+            <div className="hackfusion-bg" aria-hidden="true">
+                <span className="hackfusion-grid" />
+                <span className="hackfusion-plane plane-a" />
+                <span className="hackfusion-plane plane-b" />
+                <span className="hackfusion-glow" />
+                <p className="hackfusion-title" data-text="HackFusion 3.0">HackFusion 3.0</p>
+            </div>
 
             {/* ── Left panel ── */}
             <div className="hidden lg:flex flex-col justify-between w-[54%] px-16 py-14 relative overflow-hidden">

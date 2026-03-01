@@ -728,6 +728,127 @@
   font-weight: 700;
 }
 
+.hackfusion-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  perspective: 1100px;
+  z-index: 0;
+}
+
+.hackfusion-grid {
+  position: absolute;
+  inset: -8% -10%;
+  background-image:
+    linear-gradient(to right, rgba(100, 116, 139, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 116, 139, 0.06) 1px, transparent 1px);
+  background-size: 44px 44px;
+  transform: rotateX(67deg) translateY(34%);
+  transform-origin: center;
+  opacity: 0.28;
+}
+
+.hackfusion-plane {
+  position: absolute;
+  border-radius: 26px;
+  border: 1px solid var(--c-border);
+  background: linear-gradient(145deg, rgba(14, 24, 39, 0.78), rgba(8, 15, 28, 0.44));
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(3px);
+  animation: hackfusionFloat 9s ease-in-out infinite;
+}
+
+.hackfusion-plane.plane-a {
+  width: 48vw;
+  max-width: 680px;
+  min-width: 320px;
+  height: 220px;
+  left: -12%;
+  top: 18%;
+  transform: rotateY(36deg) rotateX(10deg) rotateZ(-7deg);
+  opacity: 0.16;
+}
+
+.hackfusion-plane.plane-b {
+  width: 46vw;
+  max-width: 640px;
+  min-width: 280px;
+  height: 200px;
+  right: -12%;
+  bottom: 12%;
+  transform: rotateY(-34deg) rotateX(11deg) rotateZ(6deg);
+  opacity: 0.15;
+  animation-delay: 0.7s;
+}
+
+.hackfusion-glow {
+  position: absolute;
+  width: 560px;
+  height: 560px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(139, 92, 246, 0.08) 34%, rgba(20, 184, 166, 0.06) 55%, transparent 75%);
+  filter: blur(6px);
+}
+
+.hackfusion-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translateZ(76px) rotateX(21deg) rotateY(-13deg);
+  transform-style: preserve-3d;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.95rem, 4.6vw, 4rem);
+  letter-spacing: 0.21em;
+  text-transform: uppercase;
+  color: rgba(242, 247, 255, 0.36);
+  text-shadow: 0 0 24px rgba(129, 140, 248, 0.33), 0 18px 38px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  z-index: 3;
+  animation: hackfusionTitleDrift 8.2s ease-in-out infinite;
+}
+
+.hackfusion-title::before,
+.hackfusion-title::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.hackfusion-title::before {
+  color: rgba(167, 139, 250, 0.34);
+  transform: translate3d(0, 0, -36px);
+  text-shadow:
+    1px 1px 0 rgba(10, 16, 28, 0.75),
+    2px 2px 0 rgba(10, 16, 28, 0.72),
+    3px 3px 0 rgba(10, 16, 28, 0.68),
+    4px 4px 0 rgba(10, 16, 28, 0.64),
+    5px 5px 0 rgba(10, 16, 28, 0.6),
+    6px 6px 0 rgba(10, 16, 28, 0.56),
+    7px 7px 0 rgba(10, 16, 28, 0.52),
+    8px 8px 0 rgba(10, 16, 28, 0.48),
+    10px 10px 0 rgba(10, 16, 28, 0.43),
+    12px 12px 0 rgba(10, 16, 28, 0.38),
+    14px 14px 0 rgba(10, 16, 28, 0.34),
+    16px 16px 0 rgba(10, 16, 28, 0.3),
+    18px 18px 0 rgba(10, 16, 28, 0.26),
+    20px 20px 0 rgba(10, 16, 28, 0.22),
+    22px 22px 0 rgba(10, 16, 28, 0.19);
+}
+
+.hackfusion-title::after {
+  color: rgba(2, 6, 14, 0.76);
+  filter: blur(2.2px);
+  transform: translate3d(0, 0, -56px);
+  text-shadow: 0 28px 48px rgba(0, 0, 0, 0.74);
+}
+
 @keyframes medCoreFloat {
 
   0%,
@@ -793,6 +914,28 @@
 
   to {
     transform: translateX(130%);
+  }
+}
+
+@keyframes hackfusionFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+
+  50% {
+    translate: 0 -8px;
+  }
+}
+
+@keyframes hackfusionTitleDrift {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) translateZ(76px) rotateX(21deg) rotateY(-13deg);
+  }
+
+  50% {
+    transform: translate(-50%, calc(-50% - 4px)) translateZ(88px) rotateX(23deg) rotateY(-8deg);
   }
 }
 
