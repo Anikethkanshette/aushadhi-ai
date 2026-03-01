@@ -3,6 +3,10 @@
 > **Voice-Enabled Agentic AI Pharmacist** — AI-powered pharmacy assistant with ABHA login, voice interaction, real pharmaceutical product data, and simulated order processing.
 
 <p align="center">
+   <img src="https://capsule-render.vercel.app/api?type=waving&height=180&text=AushadhiAI%20%7C%20HackFusion%203.0&fontSize=38&fontAlignY=35&color=0:0f172a,50:1e3a8a,100:14b8a6&fontColor=ffffff&animation=fadeIn" alt="AushadhiAI HackFusion 3.0 animated banner" />
+</p>
+
+<p align="center">
    <img src="https://readme-typing-svg.demolab.com?font=Inter&weight=700&size=22&pause=1000&center=true&vCenter=true&width=980&lines=Talk+to+your+AI+Pharmacist+like+a+real+assistant;Search+%E2%86%92+Confirm+%E2%86%92+Order+directly+in+chat;Order+history%2C+notifications%2C+auto-refill+with+guided+conversation" alt="AushadhiAI animated typing banner" />
 </p>
 
@@ -10,6 +14,35 @@
 [![React](https://img.shields.io/badge/Frontend-React+Vite-61DAFB)](https://react.dev)
 [![Gemini](https://img.shields.io/badge/AI-Google_Gemini-FF6B35)](https://aistudio.google.com/)
 [![Langfuse](https://img.shields.io/badge/Observability-Langfuse-purple)](https://langfuse.com)
+[![HackFusion 3.0](https://img.shields.io/badge/HackFusion-3.0-7c3aed?style=for-the-badge)](https://github.com/Anikethkanshette/aushadhi-ai)
+[![Last Commit](https://img.shields.io/github/last-commit/Anikethkanshette/aushadhi-ai?style=for-the-badge)](https://github.com/Anikethkanshette/aushadhi-ai/commits/main)
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/Anikethkanshette/aushadhi-ai?style=for-the-badge)](https://github.com/Anikethkanshette/aushadhi-ai/commits/main)
+
+---
+
+## 🏆 HackFusion 3.0 Project
+
+AushadhiAI was built and evolved as a **HackFusion 3.0 project** with a focus on:
+- Agentic healthcare workflows
+- Human-like voice interaction
+- Reliable pharmacy order automation
+- Real-time pharmacist + patient collaboration UX
+
+---
+
+## 📈 Live Commit Pulse
+
+> This section auto-updates from GitHub and reflects ongoing repository activity.
+
+[![Repo Commits](https://img.shields.io/github/commit-activity/y/Anikethkanshette/aushadhi-ai?label=Commits%20%28Year%29)](https://github.com/Anikethkanshette/aushadhi-ai/commits/main)
+[![Open Issues](https://img.shields.io/github/issues/Anikethkanshette/aushadhi-ai)](https://github.com/Anikethkanshette/aushadhi-ai/issues)
+[![PRs](https://img.shields.io/github/issues-pr/Anikethkanshette/aushadhi-ai)](https://github.com/Anikethkanshette/aushadhi-ai/pulls)
+
+<p align="center">
+   <img src="https://github-readme-activity-graph.vercel.app/graph?username=Anikethkanshette&bg_color=0f172a&color=ffffff&line=14b8a6&point=7c3aed&area=true&hide_border=true&custom_title=Live%20GitHub%20Commit%20Activity" alt="Live GitHub commit activity graph" />
+</p>
+
+- Live commits feed: https://github.com/Anikethkanshette/aushadhi-ai/commits/main
 
 ---
 
