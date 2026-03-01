@@ -10,7 +10,7 @@ import logging
 import threading
 import time
 from typing import List, Dict, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, date
 
 from config import get_settings
 
@@ -25,6 +25,7 @@ DATA_DIR = settings.DATA_DIR
 _medicine_cache_lock = threading.RLock()
 _order_cache_lock = threading.RLock()
 _notification_cache_lock = threading.RLock()
+_prescription_cache_lock = threading.RLock()
 
 _medicines_cache: Optional[List[Dict]] = None
 _medicines_cache_time: float = 0
@@ -32,6 +33,8 @@ _orders_cache: Optional[List[Dict]] = None
 _orders_cache_time: float = 0
 _notifications_cache: Optional[List[Dict]] = None
 _notifications_cache_time: float = 0
+_prescriptions_cache: Optional[List[Dict]] = None
+_prescriptions_cache_time: float = 0
 
 
 class DatabaseError(Exception):
@@ -171,7 +174,7 @@ def load_medicines() -> List[Dict]:
         return medicines
 
 
-def load_orders() -> List[Dict]:
+def load_orders(force_refresh: bool = False) -> List[Dict]:
     """
     Load orders from cache or file.
     
@@ -184,7 +187,7 @@ def load_orders() -> List[Dict]:
     global _orders_cache, _orders_cache_time
     
     with _order_cache_lock:
-        if _orders_cache is not None and _is_cache_valid(_orders_cache_time):
+        if not force_refresh and _orders_cache is not None and _is_cache_valid(_orders_cache_time):
             logger.debug("Using cached orders data")
             return _orders_cache
         
@@ -355,7 +358,7 @@ def get_medicine_by_id(medicine_id: str) -> Optional[Dict]:
         return None
 
 
-def get_patient_orders(patient_id: str = None, abha_id: str = None) -> List[Dict]:
+def get_patient_orders(patient_id: str = None, abha_id: str = None, force_refresh: bool = False) -> List[Dict]:
     """
     Get orders for a patient.
     
@@ -371,7 +374,7 @@ def get_patient_orders(patient_id: str = None, abha_id: str = None) -> List[Dict
         return []
     
     try:
-        orders = load_orders()
+        orders = load_orders(force_refresh=force_refresh)
         result = []
         
         for order in orders:
@@ -387,7 +390,7 @@ def get_patient_orders(patient_id: str = None, abha_id: str = None) -> List[Dict
         return []
 
 
-def get_all_orders() -> List[Dict]:
+def get_all_orders(force_refresh: bool = False) -> List[Dict]:
     """
     Get all orders.
     
@@ -395,7 +398,7 @@ def get_all_orders() -> List[Dict]:
         List of all orders
     """
     try:
-        return load_orders()
+        return load_orders(force_refresh=force_refresh)
     except Exception as e:
         logger.error(f"Error retrieving all orders: {e}")
         return []
@@ -659,10 +662,200 @@ def mark_all_notifications_read(patient_id: str = None, abha_id: str = None) -> 
             raise DatabaseError(f"Failed to mark notifications as read: {str(e)}")
 
 
+def load_prescriptions(force_refresh: bool = False) -> List[Dict]:
+    """
+    Load prescription records from cache or file.
+
+    Args:
+        force_refresh: Skip cache and read from disk.
+
+    Returns:
+        List of prescription dictionaries
+    """
+    global _prescriptions_cache, _prescriptions_cache_time
+
+    with _prescription_cache_lock:
+        if not force_refresh and _prescriptions_cache is not None and _is_cache_valid(_prescriptions_cache_time):
+            return _prescriptions_cache
+
+        filepath = os.path.join(DATA_DIR, "prescriptions.json")
+        try:
+            if not os.path.exists(filepath):
+                os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
+                with open(filepath, "w", encoding="utf-8") as f:
+                    json.dump([], f, indent=2)
+                _prescriptions_cache = []
+                _prescriptions_cache_time = time.time()
+                return []
+
+            with open(filepath, "r", encoding="utf-8") as f:
+                records = json.load(f)
+            if not isinstance(records, list):
+                records = []
+
+            _prescriptions_cache = records
+            _prescriptions_cache_time = time.time()
+            return records
+        except json.JSONDecodeError:
+            _prescriptions_cache = []
+            _prescriptions_cache_time = time.time()
+            return []
+        except Exception as e:
+            logger.error(f"Error loading prescriptions: {e}")
+            raise DatabaseError(f"Failed to load prescriptions: {str(e)}")
+
+
+def save_prescription_record(record: Dict) -> bool:
+    """
+    Save a prescription record to prescriptions.json.
+    """
+    global _prescriptions_cache, _prescriptions_cache_time
+
+    if not record:
+        raise DataValidationError("Prescription record cannot be empty")
+
+    with _prescription_cache_lock:
+        try:
+            records = load_prescriptions(force_refresh=True)
+            records.append(record)
+            filepath = os.path.join(DATA_DIR, "prescriptions.json")
+            os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(records, f, indent=2)
+
+            _prescriptions_cache = records
+            _prescriptions_cache_time = time.time()
+            return True
+        except Exception as e:
+            logger.error(f"Error saving prescription record: {e}")
+            raise DatabaseError(f"Failed to save prescription record: {str(e)}")
+
+
+def get_active_prescription(abha_id: str, medicine_id: str, on_date: Optional[str] = None) -> Optional[Dict]:
+    """
+    Get most recent active prescription for patient+medicine.
+    """
+    if not abha_id or not medicine_id:
+        return None
+
+    as_of_str = str(on_date or date.today())
+    try:
+        as_of = date.fromisoformat(as_of_str)
+    except Exception:
+        as_of = date.today()
+
+    records = load_prescriptions(force_refresh=True)
+    matches: List[Dict] = []
+    for rec in records:
+        if str(rec.get("abha_id", "")) != str(abha_id):
+            continue
+
+        meds = rec.get("medicines") or []
+        has_medicine = any(str(m.get("matched_medicine_id", "")) == str(medicine_id) for m in meds if isinstance(m, dict))
+        if not has_medicine:
+            continue
+
+        valid_until_raw = str(rec.get("valid_until", "")).strip()
+        if not valid_until_raw:
+            continue
+        try:
+            valid_until = date.fromisoformat(valid_until_raw)
+        except Exception:
+            continue
+
+        if valid_until >= as_of:
+            matches.append(rec)
+
+    if not matches:
+        return None
+
+    matches.sort(key=lambda x: str(x.get("uploaded_at", "")), reverse=True)
+    return matches[0]
+
+
+def get_active_prescriptions_for_patient(abha_id: str, on_date: Optional[str] = None) -> List[Dict]:
+    """
+    Get all active prescriptions for a patient as of a date.
+    """
+    if not abha_id:
+        return []
+
+    as_of_str = str(on_date or date.today())
+    try:
+        as_of = date.fromisoformat(as_of_str)
+    except Exception:
+        as_of = date.today()
+
+    records = load_prescriptions(force_refresh=True)
+    active_records: List[Dict] = []
+
+    for rec in records:
+        if str(rec.get("abha_id", "")) != str(abha_id):
+            continue
+
+        valid_until_raw = str(rec.get("valid_until", "")).strip()
+        if not valid_until_raw:
+            continue
+
+        try:
+            valid_until = date.fromisoformat(valid_until_raw)
+        except Exception:
+            continue
+
+        if valid_until >= as_of:
+            active_records.append(rec)
+
+    active_records.sort(key=lambda x: str(x.get("uploaded_at", "")), reverse=True)
+    return active_records
+
+
+def get_prescription_history_for_patient(abha_id: str, on_date: Optional[str] = None) -> Dict[str, List[Dict]]:
+    """
+    Get active and expired prescriptions for a patient.
+    """
+    if not abha_id:
+        return {"active": [], "expired": []}
+
+    as_of_str = str(on_date or date.today())
+    try:
+        as_of = date.fromisoformat(as_of_str)
+    except Exception:
+        as_of = date.today()
+
+    records = load_prescriptions(force_refresh=True)
+    active_records: List[Dict] = []
+    expired_records: List[Dict] = []
+
+    for rec in records:
+        if str(rec.get("abha_id", "")) != str(abha_id):
+            continue
+
+        valid_until_raw = str(rec.get("valid_until", "")).strip()
+        if not valid_until_raw:
+            continue
+
+        try:
+            valid_until = date.fromisoformat(valid_until_raw)
+        except Exception:
+            continue
+
+        if valid_until >= as_of:
+            active_records.append(rec)
+        else:
+            expired_records.append(rec)
+
+    active_records.sort(key=lambda x: str(x.get("uploaded_at", "")), reverse=True)
+    expired_records.sort(key=lambda x: str(x.get("uploaded_at", "")), reverse=True)
+    return {
+        "active": active_records,
+        "expired": expired_records,
+    }
+
+
 def invalidate_cache():
     """Invalidate all caches to force reload from files."""
-    global _medicines_cache, _orders_cache, _notifications_cache
-    global _medicines_cache_time, _orders_cache_time, _notifications_cache_time
+    global _medicines_cache, _orders_cache, _notifications_cache, _prescriptions_cache
+    global _medicines_cache_time, _orders_cache_time, _notifications_cache_time, _prescriptions_cache_time
     
     with _medicine_cache_lock:
         _medicines_cache = None
@@ -675,6 +868,10 @@ def invalidate_cache():
     with _notification_cache_lock:
         _notifications_cache = None
         _notifications_cache_time = 0
+
+    with _prescription_cache_lock:
+        _prescriptions_cache = None
+        _prescriptions_cache_time = 0
     
     logger.info("All caches invalidated")
     

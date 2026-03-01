@@ -28,11 +28,57 @@ function useSpeechRecognition(onResult) {
     return { listening, start, stop }
 }
 
+function pickNaturalLadyVoice(lang = 'en-IN') {
+    if (!window.speechSynthesis) return null
+    const voices = window.speechSynthesis.getVoices() || []
+    if (!voices.length) return null
+
+    const femalePreferredNames = [
+        'heera', 'priya', 'neerja', 'veena', 'asha', 'natasha',
+        'samantha', 'aria', 'jenny', 'zira', 'female', 'woman', 'lady',
+    ]
+
+    const isIndianEnglish = (v) => {
+        const langCode = (v.lang || '').toLowerCase()
+        return langCode === 'en-in' || langCode.startsWith('en-in')
+    }
+
+    const isFemaleLike = (v) => {
+        const name = (v.name || '').toLowerCase()
+        return femalePreferredNames.some(n => name.includes(n))
+    }
+
+    const exactIndianFemale = voices.find(v => isIndianEnglish(v) && isFemaleLike(v))
+    if (exactIndianFemale) return exactIndianFemale
+
+    const anyIndianEnglish = voices.find(v => isIndianEnglish(v))
+    if (anyIndianEnglish) return anyIndianEnglish
+
+    const localeFamilyFemale = voices.find(v => {
+        const langCode = (v.lang || '').toLowerCase()
+        return langCode.startsWith('en') && isFemaleLike(v)
+    })
+    if (localeFamilyFemale) return localeFamilyFemale
+
+    const localeMatch = voices.find(v => (v.lang || '').toLowerCase().startsWith((lang || 'en-IN').toLowerCase().slice(0, 2)))
+
+    return localeMatch || voices[0]
+}
+
 function speak(text, lang = 'en-IN') {
     if (!window.speechSynthesis) return
     window.speechSynthesis.cancel()
     const utter = new SpeechSynthesisUtterance(text)
-    utter.lang = lang; utter.rate = 0.95
+    utter.lang = lang
+    utter.rate = 0.9
+    utter.pitch = 1.02
+
+    const selectedVoice = pickNaturalLadyVoice(lang)
+    if (selectedVoice) {
+        utter.voice = selectedVoice
+        utter.lang = selectedVoice.lang || lang
+    }
+
     window.speechSynthesis.speak(utter)
 }
 
@@ -87,6 +133,16 @@ function ChatBubble({ msg }) {
                             🎉 PMJAY eligible – 20% discount applied
                         </div>
                     )}
+
+                    {msg.order_summary && (
+                        <div className="mt-2 p-2.5 rounded-xl"
+                            style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.26)' }}>
+                            <p className="text-[11px] font-semibold text-indigo-200">Order Summary</p>
+                            <p className="text-[11px] opacity-90">Medicine: {msg.order_summary.medicine_name}</p>
+                            <p className="text-[11px] opacity-90">Quantity: {msg.order_summary.quantity}</p>
+                            <p className="text-[11px] opacity-90">Payment: {msg.order_summary.payment_label}</p>
+                        </div>
+                    )}
                 </div>
                 <p className="text-[10px] mt-1.5 px-1" style={{ color: '#475569' }}>{msg.time}</p>
             </div>
@@ -121,17 +177,59 @@ export default function ChatPage() {
     }])
     const [input, setInput] = useState('')
     const [loading, setLoading] = useState(false)
-    const [guidedFlow, setGuidedFlow] = useState({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+    const [guidedFlow, setGuidedFlow] = useState({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
     const [lang, setLang] = useState('en-IN')
     const [ttsEnabled, setTts] = useState(true)
     const [hasPrescription, setHasRx] = useState(false)
     const [prescriptionFile, setRxFile] = useState(null)
+    const [rxPatientWarning, setRxPatientWarning] = useState('')
     const bottomRef = useRef(null)
     const fileRef = useRef(null)
     const textareaRef = useRef(null)
 
     const addMsg = (role, content, extra = {}) =>
         setMessages(prev => [...prev, { role, content, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), ...extra }])
+
+    useEffect(() => {
+        const raw = sessionStorage.getItem('aushadhi_chat_handoff')
+        if (!raw) return
+        sessionStorage.removeItem('aushadhi_chat_handoff')
+        try {
+            const data = JSON.parse(raw)
+            const meds = Array.isArray(data?.medicines) ? data.medicines : []
+            if (meds.length === 0) return
+            const safeMeds = normalizeMedicinesForPatient(meds)
+            const first = safeMeds[0]
+            addMsg('assistant', data?.prompt || 'I found these medicines from your prescription. Do you want to order these?', { medicines: safeMeds })
+            if (first) {
+                setGuidedFlow({ type: 'order', stage: 'awaiting_decision', medicine: first, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
+                addMsg('assistant', `Do you want to order ${first.name}? Reply yes or no.`)
+            }
+        } catch {
+        }
+    }, [])
+
+    const normalizeMedicinesForPatient = (items = []) => {
+        return (Array.isArray(items) ? items : []).map(item => ({
+            id: item?.id,
+            name: item?.name,
+            price: item?.price,
+            generic_name: item?.generic_name,
+            prescription_required: !!item?.prescription_required,
+            available: typeof item?.available === 'boolean'
+                ? item.available
+                : Number(item?.stock_quantity || item?.quantity_available || 0) > 0,
+        }))
+    }
+
+    const formatCancelWindowMessage = (text) => {
+        const raw = String(text || '')
+        const lowered = raw.toLowerCase()
+        if (lowered.includes('only be cancelled within 1 hour') || lowered.includes('within 1 hour of placement')) {
+            return 'This order can only be cancelled within 1 hour of placing it.'
+        }
+        return raw
+    }
 
     useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
 
@@ -190,6 +288,22 @@ export default function ChatPage() {
         return null
     }
 
+    const parsePaymentMethod = (text) => {
+        const normalized = (text || '').trim().toLowerCase()
+        if (!normalized) return null
+        if (normalized.includes('upi')) return { key: 'UPI', label: 'UPI' }
+        if (normalized.includes('card') || normalized.includes('credit') || normalized.includes('debit')) return { key: 'CREDIT_CARD', label: 'Card' }
+        if (normalized.includes('cash') || normalized.includes('cod') || normalized.includes('delivery')) return { key: 'COD', label: 'Cash on Delivery' }
+        return null
+    }
+
+    const lookupMedicinesSafely = async (queryText) => {
+        const res = await axios.get(`${apiBase}${API_ENDPOINTS.MEDICINES_LIST}`, {
+            params: { search: queryText },
+        })
+        return res?.data?.data?.medicines || []
+    }
+
     const detectGuidedIntent = (text) => {
         const t = (text || '').toLowerCase()
         if (t.includes('order history') || t.includes('my orders') || t.includes('recent orders') || t.includes('past orders')) {
@@ -227,7 +341,7 @@ export default function ChatPage() {
                 return
             }
             if (answer === 'no') {
-                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                 addMsg('assistant', 'No problem. You can ask for any other medicine anytime.')
                 return
             }
@@ -242,19 +356,79 @@ export default function ChatPage() {
                 return
             }
 
+            setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_payment_method', quantity: qty }))
+            addMsg('assistant', 'Choose your mock payment method: UPI, Card, or Cash on Delivery (COD).')
+            return
+        }
+
+        if (guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_payment_method') {
+            const payment = parsePaymentMethod(trimmed)
+            if (!payment) {
+                addMsg('assistant', 'Please choose one payment method: UPI, Card, or Cash on Delivery (COD).')
+                return
+            }
+
+            const medName = guidedFlow.medicine?.name || 'this medicine'
+            const qty = guidedFlow.quantity || 1
+            setGuidedFlow(prev => ({ ...prev, stage: 'awaiting_final_confirmation', paymentMethod: payment.key }))
+            addMsg('assistant', 'Please review and confirm your order. Reply yes or no.', {
+                order_summary: {
+                    medicine_name: medName,
+                    quantity: qty,
+                    payment_label: payment.label,
+                },
+            })
+            return
+        }
+
+        if (guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_final_confirmation') {
+            const answer = parseYesNo(trimmed)
+            if (answer === 'no') {
+                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
+                addMsg('assistant', 'Order cancelled. I can help you with another medicine anytime.')
+                return
+            }
+            if (answer !== 'yes') {
+                addMsg('assistant', 'Please reply with yes or no to confirm the order.')
+                return
+            }
+
             setLoading(true)
             try {
                 const medicineName = guidedFlow.medicine?.name || 'this medicine'
-                const orderInstruction = `Place an order for ${medicineName}, quantity ${qty}, and confirm total amount and delivery.`
+                const qty = guidedFlow.quantity || 1
+                const paymentMethod = guidedFlow.paymentMethod || 'UPI'
+
+                let paymentSummary = ''
+                if (paymentMethod === 'COD') {
+                    paymentSummary = 'Mock payment selected: Cash on Delivery. Payment will be collected at delivery.'
+                } else {
+                    const paymentRes = await axios.post(`${apiBase}${API_ENDPOINTS.AGENT_EXECUTE}`, {
+                        agent: 'payment',
+                        action: 'process',
+                        payload: {
+                            amount: Math.max(1, qty * Number(guidedFlow.medicine?.price || 1)),
+                            method: paymentMethod,
+                        },
+                        patient_id: patient?.patient_id,
+                        patient_name: patient?.name,
+                        abha_id: patient?.abha_id,
+                    })
+                    const paymentData = paymentRes?.data?.result?.data || {}
+                    paymentSummary = `Mock payment successful via ${paymentMethod.replace('_', ' ')}. Transaction: ${paymentData.transaction_id || 'N/A'}.`
+                }
+
+                const orderInstruction = `Place an order for ${medicineName}, quantity ${qty}. Payment mode already selected: ${paymentMethod}. Confirm order details and share order id.`
                 const data = await callAgent(orderInstruction)
-                addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                addMsg('assistant', paymentSummary)
+                addMsg('assistant', data.response, { medicines: normalizeMedicinesForPatient(data.medicines_found), welfare_eligible: data.welfare_eligible })
                 if (ttsEnabled) speak((data.response || '').replace(/[*#\[\]]/g, '').slice(0, 300), lang)
             } catch {
                 const fallback = 'I could not place the order right now. Please try again in a moment.'
                 addMsg('assistant', fallback)
                 if (ttsEnabled) speak(fallback.slice(0, 200), lang)
             } finally {
-                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                 setLoading(false)
             }
             return
@@ -265,7 +439,7 @@ export default function ChatPage() {
 
             if (guidedFlow.stage === 'awaiting_decision') {
                 if (answer === 'no') {
-                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                     addMsg('assistant', 'Okay, cancelled. Ask me anything else anytime.')
                     return
                 }
@@ -282,7 +456,7 @@ export default function ChatPage() {
                     } catch {
                         addMsg('assistant', 'I could not fetch order history right now. Please try again.')
                     } finally {
-                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                         setLoading(false)
                     }
                     return
@@ -296,7 +470,7 @@ export default function ChatPage() {
                     } catch {
                         addMsg('assistant', 'I could not fetch notifications right now. Please try again.')
                     } finally {
-                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                         setLoading(false)
                     }
                     return
@@ -322,7 +496,7 @@ export default function ChatPage() {
                     } catch {
                         addMsg('assistant', 'I could not fetch auto-refill plans right now. Please try again.')
                     } finally {
-                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                        setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                         setLoading(false)
                     }
                     return
@@ -343,11 +517,14 @@ export default function ChatPage() {
                         ? `Cancel order ${enteredOrderId} for my account.`
                         : `Check order status for ${enteredOrderId}.`
                     const data = await callAgent(prompt)
-                    addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+                    const responseText = guidedFlow.type === 'cancel_order'
+                        ? formatCancelWindowMessage(data.response)
+                        : data.response
+                    addMsg('assistant', responseText, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
                 } catch {
                     addMsg('assistant', 'I could not process this order ID right now. Please try again.')
                 } finally {
-                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                     setLoading(false)
                 }
                 return
@@ -362,7 +539,7 @@ export default function ChatPage() {
                 } catch {
                     addMsg('assistant', 'I could not cancel that auto-refill plan right now. Please try again.')
                 } finally {
-                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, orderId: '', subscriptionId: '' })
+                    setGuidedFlow({ type: 'idle', stage: 'idle', medicine: null, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                     setLoading(false)
                 }
                 return
@@ -376,15 +553,35 @@ export default function ChatPage() {
             return
         }
 
+        if (isLikelyMedicineNameInput(trimmed)) {
+            setLoading(true)
+            try {
+                const medicines = await lookupMedicinesSafely(trimmed)
+                if (Array.isArray(medicines) && medicines.length > 0) {
+                    const top = medicines[0]
+                    addMsg('assistant', `I found ${medicines.length} option(s) for "${trimmed}". Do you want to order ${top?.name}? Reply yes or no.`, {
+                        medicines: normalizeMedicinesForPatient(medicines.slice(0, 5)),
+                        welfare_eligible: false,
+                    })
+                    setGuidedFlow({ type: 'order', stage: 'awaiting_decision', medicine: top, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
+                    setLoading(false)
+                    return
+                }
+            } catch {
+            } finally {
+                setLoading(false)
+            }
+        }
+
         setLoading(true)
         try {
             const data = await callAgent(trimmed)
-            addMsg('assistant', data.response, { medicines: data.medicines_found, welfare_eligible: data.welfare_eligible })
+            addMsg('assistant', data.response, { medicines: normalizeMedicinesForPatient(data.medicines_found), welfare_eligible: data.welfare_eligible })
             if (ttsEnabled) speak(data.response.replace(/[*#\[\]]/g, '').slice(0, 300), lang)
 
             if (Array.isArray(data?.medicines_found) && data.medicines_found.length > 0 && isLikelyMedicineNameInput(trimmed)) {
                 const firstMedicine = data.medicines_found[0]
-                setGuidedFlow({ type: 'order', stage: 'awaiting_decision', medicine: firstMedicine, orderId: '', subscriptionId: '' })
+                setGuidedFlow({ type: 'order', stage: 'awaiting_decision', medicine: firstMedicine, quantity: 1, paymentMethod: '', orderId: '', subscriptionId: '' })
                 addMsg('assistant', `Do you want to order ${firstMedicine?.name}? Reply yes or no.`)
             }
         } catch {
@@ -396,7 +593,7 @@ export default function ChatPage() {
 
     const getFallback = (text) => {
         const t = text.toLowerCase()
-        if (t.includes('paracetamol') || t.includes('dolo')) return '💊 Paracetamol 500mg – ₹25 | In Stock (500 units) | OTC – No prescription needed.'
+        if (t.includes('paracetamol') || t.includes('dolo')) return '💊 Paracetamol 500mg – ₹25 | In Stock | OTC – No prescription needed.'
         if (t.includes('amoxicillin')) return '⚕️ Amoxicillin 500mg requires a valid prescription (Schedule H). Please upload your prescription.'
         if (t.includes('metformin')) return '💊 Metformin 500mg – ₹30 | In Stock | Prescription Required. Would you like your refill history?'
         return '👋 I\'m your AI Pharmacist (offline mode). Type a medicine name to check availability, price, and prescription status.'
@@ -407,14 +604,46 @@ export default function ChatPage() {
     const handleRxUpload = async (e) => {
         const file = e.target.files[0]; if (!file) return
         setRxFile(file); setHasRx(true)
+        setRxPatientWarning('')
         addMsg('user', `📄 Uploaded Prescription: ${file.name}`)
         setLoading(true)
         try {
             const fd = new FormData(); fd.append('image', file)
+            fd.append('patient_name', patient?.name || '')
+            fd.append('abha_id', patient?.abha_id || '')
             const res = await axios.post(`${apiBase}${API_ENDPOINTS.AGENT_SCAN}`, fd)
             const data = res.data
-            const meds = (data.medicines || []).map(m => m.matched_medicine ? { ...m.matched_medicine, available: m.available } : null).filter(Boolean)
-            addMsg('assistant', `✅ Prescription scanned. ${data.message} Matches found:`, { medicines: meds })
+            const scanned = Array.isArray(data?.medicines) ? data.medicines : []
+            const meds = normalizeMedicinesForPatient(
+                scanned
+                    .map(m => (m?.matched_medicine ? { ...m.matched_medicine, available: m.available } : null))
+                    .filter(Boolean)
+            )
+            const unavailable = scanned.filter(item => !item?.available)
+
+            const scanTimeText = data?.scan_duration_ms
+                ? ` (in ${(Number(data.scan_duration_ms) / 1000).toFixed(1)}s)`
+                : ''
+
+            addMsg('assistant', `✅ Prescription scanned${scanTimeText}. I found these medicines in inventory:`, { medicines: meds })
+
+            if (unavailable.length > 0) {
+                const unavailableText = unavailable
+                    .map(item => `• ${item?.extracted_name}${item?.dosage ? ` (${item.dosage})` : ''}`)
+                    .join('\n')
+                const eta = data?.short_availability_eta || 'soon'
+                addMsg('assistant', `⏳ Not currently available:\n${unavailableText}\n\nWe can arrange these in a short time (about ${eta}).`)
+            }
+
+            if (data?.patient_name_warning) {
+                setRxPatientWarning(data.patient_name_warning)
+                addMsg('assistant', `⚠️ ${data.patient_name_warning}`)
+            }
+
+            if (meds.length === 0 && unavailable.length === 0) {
+                addMsg('assistant', 'I scanned the prescription, but could not identify medicines clearly. Please upload a clearer image.')
+            }
+
             if (ttsEnabled) speak('I have scanned your prescription. Here are the matching medicines.', lang)
         } catch { addMsg('assistant', '⚠️ Could not process the prescription image. Please try a clearer photo.') }
         finally { setLoading(false) }
@@ -483,6 +712,12 @@ export default function ChatPage() {
                 </div>
             </div>
 
+            {rxPatientWarning && (
+                <div className="px-6 py-2 text-xs text-amber-300 border-b border-amber-500/20 bg-amber-500/10">
+                    ⚠️ {rxPatientWarning}
+                </div>
+            )}
+
             <div className="px-6 py-2.5 flex gap-2 flex-wrap border-b border-white/5">
                 {QUICK_ACTIONS.map(action => (
                     <button
@@ -499,7 +734,7 @@ export default function ChatPage() {
                     </button>
                 ))}
 
-                {guidedFlow.stage === 'awaiting_decision' && (
+                {(guidedFlow.stage === 'awaiting_decision' || guidedFlow.stage === 'awaiting_final_confirmation') && (
                     <>
                         <button
                             onClick={() => sendMessage('yes')}
@@ -526,6 +761,17 @@ export default function ChatPage() {
                         style={{ background: 'rgba(99,102,241,0.10)', border: '1px solid rgba(99,102,241,0.22)', color: '#c7d2fe' }}
                     >
                         Qty {q}
+                    </button>
+                ))}
+
+                {guidedFlow.type === 'order' && guidedFlow.stage === 'awaiting_payment_method' && ['UPI', 'Card', 'Cash on Delivery'].map(method => (
+                    <button
+                        key={`pay-${method}`}
+                        onClick={() => sendMessage(method)}
+                        className="text-xs px-3 py-1.5 rounded-xl transition-all font-semibold"
+                        style={{ background: 'rgba(20,184,166,0.10)', border: '1px solid rgba(20,184,166,0.22)', color: '#99f6e4' }}
+                    >
+                        {method}
                     </button>
                 ))}
             </div>

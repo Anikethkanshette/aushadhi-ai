@@ -31,7 +31,7 @@ export default function OrdersQueue({ apiBase }) {
         if (!silent) setLoading(true)
         try {
             const res = await axios.get(`${resolvedApiBase}/pharmacist/orders`)
-            setOrders(res.data.orders || [])
+            setOrders(res?.data?.data?.orders || res?.data?.orders || [])
         } catch { }
         finally { setLoading(false) }
     }

@@ -43,9 +43,13 @@ export const API_ENDPOINTS = {
   
   // Agent
   AGENT_CHAT: '/agent/chat',
+  AGENT_EXECUTE: '/agent/execute',
   AGENT_VOICE: '/agent/voice',
   AGENT_WELFARE: (abhaId) => `/agent/welfare/${abhaId}`,
   AGENT_SCAN: '/agent/scan-prescription',
+  AGENT_ACTIVE_PRESCRIPTION: '/agent/prescription/active',
+  AGENT_ACTIVE_PRESCRIPTIONS_LIST: (abhaId) => `/agent/prescriptions/active/${abhaId}`,
+  AGENT_PRESCRIPTION_HISTORY: (abhaId) => `/agent/prescriptions/history/${abhaId}`,
   
   // Pharmacist
   PHARMACIST_STATS: '/pharmacist/stats',

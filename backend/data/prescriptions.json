@@ -1,0 +1,38 @@
+[
+  {
+    "record_id": "PRX-F58826EC",
+    "abha_id": "1234-5678-9012",
+    "patient_name": "Rajesh Kumar",
+    "uploaded_at": "2026-02-28T23:28:48.592092",
+    "valid_until": "2026-03-31",
+    "source_file_name": "._tmp_rx_store2.png",
+    "stored_file_name": "PRX-F58826EC.png",
+    "stored_file_path": "C:\\Users\\chava\\OneDrive\\Desktop\\aushadhi-ai\\backend\\data\\prescriptions\\PRX-F58826EC.png",
+    "medicines": [
+      {
+        "extracted_name": "Paracetamol",
+        "dosage": "500mg",
+        "quantity": 1,
+        "matched_medicine_id": "1329121"
+      }
+    ]
+  },
+  {
+    "record_id": "PRX-400F88A5",
+    "abha_id": "1234-5678-9012",
+    "patient_name": "Rajesh Kumar",
+    "uploaded_at": "2026-03-01T00:04:28.550407",
+    "valid_until": "2026-03-31",
+    "source_file_name": "WhatsApp Image 2026-02-28 at 4.05.51 PM (1).jpeg",
+    "stored_file_name": "PRX-400F88A5.jpeg",
+    "stored_file_path": "C:\\Users\\chava\\OneDrive\\Desktop\\aushadhi-ai\\backend\\data\\prescriptions\\PRX-400F88A5.jpeg",
+    "medicines": [
+      {
+        "extracted_name": "Paracetamol",
+        "dosage": "500mg",
+        "quantity": 1,
+        "matched_medicine_id": "1329121"
+      }
+    ]
+  }
+]

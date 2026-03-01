@@ -28,7 +28,7 @@ export default function MedicineSearch() {
 
     // Checkout state
     const [checkoutMed, setCheckoutMed] = useState(null)
-    const [quantity, setQuantity] = useState(1)
+    const [quantity, setQuantity] = useState('1')
     const [hasRx, setHasRx] = useState(false)
     const [checkoutState, setCheckoutState] = useState('idle')
     const [checkoutResult, setCheckoutResult] = useState(null)
@@ -38,6 +38,14 @@ export default function MedicineSearch() {
     const [rxScanError, setRxScanError] = useState('')
     const [rxScanSummary, setRxScanSummary] = useState('')
     const [rxScanMatched, setRxScanMatched] = useState(false)
+    const [rxScanMatches, setRxScanMatches] = useState([])
+    const [rxScanUnavailable, setRxScanUnavailable] = useState([])
+    const [rxScanEta, setRxScanEta] = useState('')
+    const [notifyRequestLoading, setNotifyRequestLoading] = useState('')
+    const [notifyRequestDone, setNotifyRequestDone] = useState([])
+    const [rxPatientWarning, setRxPatientWarning] = useState('')
+    const [storedPrescriptionRecordId, setStoredPrescriptionRecordId] = useState('')
+    const [storedPrescriptionValidUntil, setStoredPrescriptionValidUntil] = useState('')
 
     const [cart, setCart] = useState([])
     const [showCart, setShowCart] = useState(false)
@@ -100,7 +108,7 @@ export default function MedicineSearch() {
 
     const openCheckout = (med) => {
         setCheckoutMed(med)
-        setQuantity(1)
+        setQuantity('1')
         setHasRx(false)
         setPrescriptionFile(null)
         setCheckoutState('idle')
@@ -110,7 +118,83 @@ export default function MedicineSearch() {
         setRxScanError('')
         setRxScanSummary('')
         setRxScanMatched(false)
+        setRxScanMatches([])
+        setRxScanUnavailable([])
+        setRxScanEta('')
+        setRxPatientWarning('')
+        setNotifyRequestLoading('')
+        setNotifyRequestDone([])
+        setStoredPrescriptionRecordId('')
+        setStoredPrescriptionValidUntil('')
         loadRecommendations(med.id)
+        if (isRx(med)) {
+            checkActivePrescription(med)
+        }
+    }
+
+    const checkActivePrescription = async (medicine) => {
+        if (!patient?.abha_id || !medicine?.id) return
+        try {
+            const res = await axios.get(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AGENT_ACTIVE_PRESCRIPTION}`, {
+                params: {
+                    abha_id: patient.abha_id,
+                    medicine_id: String(medicine.id),
+                },
+                timeout: 15000,
+            })
+            const active = !!res?.data?.data?.active
+            const prescription = res?.data?.data?.prescription || null
+            if (!active || !prescription) return
+
+            setStoredPrescriptionRecordId(String(prescription.record_id || ''))
+            setStoredPrescriptionValidUntil(String(prescription.valid_until || ''))
+            setHasRx(true)
+            setRxScanMatched(true)
+
+            const matchedItem = (prescription.medicines || []).find(m => String(m?.matched_medicine_id || '') === String(medicine.id))
+            const qty = Math.max(1, parseInt(matchedItem?.quantity || 1, 10) || 1)
+            setQuantity(String(Math.min(checkoutMaxQty, qty)))
+            setRxScanSummary(`Using stored valid prescription until ${prescription.valid_until || 'N/A'}${matchedItem?.dosage ? ` · ${matchedItem.dosage}` : ''}`)
+        } catch {
+            // Silent fallback: user can still upload manually
+        }
+    }
+
+    const requestAvailabilityNotification = async (item) => {
+        if (!patient?.abha_id) {
+            setRxScanError('Please login again to request availability notifications.')
+            return
+        }
+
+        const key = `${item?.extracted_name || ''}-${item?.dosage || ''}`
+        if (!key || notifyRequestDone.includes(key)) return
+
+        setNotifyRequestLoading(key)
+        setRxScanError('')
+
+        try {
+            await api.post(API_ENDPOINTS.AGENT_EXECUTE, {
+                agent: 'notification',
+                action: 'generate',
+                patient_id: patient?.patient_id,
+                patient_name: patient?.name,
+                abha_id: patient?.abha_id,
+                payload: {
+                    event_type: 'refill_reminder',
+                    details: {
+                        medicine_name: item?.extracted_name || 'Medicine',
+                        dosage: item?.dosage || '',
+                        requested_via: 'prescription_scan',
+                        short_availability_eta: rxScanEta || '30-60 minutes',
+                    },
+                },
+            })
+            setNotifyRequestDone(prev => [...prev, key])
+        } catch (error) {
+            setRxScanError(error?.response?.data?.detail || 'Unable to save notification request. Please try again.')
+        } finally {
+            setNotifyRequestLoading('')
+        }
     }
 
     const scanPrescription = async (file, medicine) => {
@@ -119,14 +203,36 @@ export default function MedicineSearch() {
         setRxScanError('')
         setRxScanSummary('')
         setRxScanMatched(false)
+        setRxScanMatches([])
+        setRxScanUnavailable([])
+        setRxScanEta('')
+        setRxPatientWarning('')
         try {
             const formData = new FormData()
             formData.append('image', file)
+            formData.append('patient_name', patient?.name || '')
+            formData.append('abha_id', patient?.abha_id || '')
             const res = await axios.post(`${API_CONFIG.BASE_URL}${API_ENDPOINTS.AGENT_SCAN}`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 timeout: 45000,
             })
             const scanned = res?.data?.medicines || []
+            const inventoryMatches = scanned
+                .filter(item => item?.matched_medicine)
+                .map(item => ({
+                    id: item.matched_medicine.id,
+                    name: item.matched_medicine.name,
+                    dosage: item?.dosage || '',
+                    quantity: Number.isFinite(Number(item?.quantity)) ? Number(item.quantity) : 1,
+                    available: !!item?.available,
+                }))
+            const unavailable = scanned.filter(item => !item?.available)
+
+            setRxScanMatches(inventoryMatches)
+            setRxScanUnavailable(unavailable)
+            setRxScanEta(res?.data?.short_availability_eta || '')
+            setRxPatientWarning(res?.data?.patient_name_warning || '')
+
             const nameWords = String(medicine.name || '').toLowerCase().split(/\s+/).filter(Boolean)
             const matched = scanned.find(item => {
                 const matchedMedicineId = String(item?.matched_medicine?.id || '')
@@ -140,10 +246,15 @@ export default function MedicineSearch() {
                 return
             }
 
-            const summary = `Matched ${matched.extracted_name}${matched.dosage ? ` (${matched.dosage})` : ''}`
+            const inStockCount = inventoryMatches.filter(m => m.available).length
+            const prescribedQty = Number.isFinite(Number(matched?.quantity)) ? Math.max(1, Number(matched.quantity)) : 1
+            const summary = `Matched ${matched.extracted_name}${matched.dosage ? ` (${matched.dosage})` : ''} · Qty ${prescribedQty} prescribed · ${inStockCount} in inventory${res?.data?.scan_duration_ms ? ` · scanned in ${(Number(res.data.scan_duration_ms) / 1000).toFixed(1)}s` : ''}`
             setRxScanSummary(summary)
             setRxScanMatched(true)
             setHasRx(true)
+            setQuantity(String(Math.min(checkoutMaxQty, prescribedQty)))
+            setStoredPrescriptionRecordId(String(res?.data?.prescription_record_id || ''))
+            setStoredPrescriptionValidUntil(String(res?.data?.prescription_valid_until || ''))
         } catch (error) {
             setRxScanError(error?.response?.data?.detail || 'Unable to scan prescription. Please try again.')
         } finally {
@@ -162,7 +273,9 @@ export default function MedicineSearch() {
 
     const placeOrder = async () => {
         if (!checkoutMed || !patient) return
-        if (!quantity || quantity < 1 || quantity > parseInt(checkoutMed.stock_quantity)) {
+        const maxQty = parseInt(checkoutMed.stock_quantity || 1, 10)
+        const parsedQty = parseInt(quantity, 10)
+        if (!Number.isFinite(parsedQty) || parsedQty < 1 || parsedQty > maxQty) {
             setCheckoutState('error')
             setCheckoutError('Please enter a valid quantity within available stock.')
             return
@@ -172,7 +285,7 @@ export default function MedicineSearch() {
             setCheckoutError('Prescription confirmation is required for this medicine.')
             return
         }
-        if (isRx(checkoutMed) && !prescriptionFile) {
+        if (isRx(checkoutMed) && !prescriptionFile && !storedPrescriptionRecordId) {
             setCheckoutState('error')
             setCheckoutError('Please upload prescription for this medicine before checkout.')
             return
@@ -191,12 +304,14 @@ export default function MedicineSearch() {
                 abha_id: patient.abha_id,
                 medicine_id: String(checkoutMed.id),
                 medicine_name: checkoutMed.name,
-                quantity: parseInt(quantity, 10),
+                quantity: parsedQty,
                 dosage_frequency: 'As directed',
                 has_prescription: hasRx,
                 prescription_file_name: prescriptionFile?.name || '',
                 prescription_scan_summary: rxScanSummary || '',
                 prescription_verified: rxScanMatched,
+                prescription_record_id: storedPrescriptionRecordId || '',
+                prescription_valid_until: storedPrescriptionValidUntil || '',
             })
             setCheckoutResult(res.data)
             setCheckoutState('success')
@@ -288,6 +403,10 @@ export default function MedicineSearch() {
 
     const closeCheckout = () => setCheckoutMed(null)
     const isRx = (med) => med?.prescription_required === true || med?.prescription_required === 'true'
+    const checkoutMaxQty = Math.max(1, parseInt(checkoutMed?.stock_quantity || 1, 10))
+    const checkoutQtyNumber = parseInt(quantity, 10)
+    const checkoutQtyValid = Number.isFinite(checkoutQtyNumber) && checkoutQtyNumber >= 1 && checkoutQtyNumber <= checkoutMaxQty
+    const checkoutQtyForTotal = checkoutQtyValid ? checkoutQtyNumber : 0
 
     return (
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -554,13 +673,37 @@ export default function MedicineSearch() {
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Quantity</label>
                                         <div className="flex items-center gap-3">
-                                            <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                                            <button onClick={() => setQuantity(prev => {
+                                                const current = parseInt(prev, 10)
+                                                const next = Number.isFinite(current) ? current - 1 : 1
+                                                return String(Math.max(1, next))
+                                            })}
                                                 className="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-bold hover:bg-white/15 transition-all">−</button>
                                             <input type="number" min="1" max={checkoutMed.stock_quantity}
                                                 value={quantity}
-                                                onChange={e => setQuantity(Math.max(1, Math.min(checkoutMed.stock_quantity, parseInt(e.target.value) || 1)))}
+                                                onChange={e => {
+                                                    const raw = e.target.value
+                                                    if (raw === '') {
+                                                        setQuantity('')
+                                                        return
+                                                    }
+                                                    if (!/^\d+$/.test(raw)) return
+                                                    setQuantity(raw)
+                                                }}
+                                                onBlur={() => {
+                                                    const parsed = parseInt(quantity, 10)
+                                                    if (!Number.isFinite(parsed)) {
+                                                        setQuantity('1')
+                                                        return
+                                                    }
+                                                    setQuantity(String(Math.max(1, Math.min(checkoutMaxQty, parsed))))
+                                                }}
                                                 className="input-field text-center text-xl font-black w-20 py-2" />
-                                            <button onClick={() => setQuantity(q => Math.min(checkoutMed.stock_quantity, q + 1))}
+                                            <button onClick={() => setQuantity(prev => {
+                                                const current = parseInt(prev, 10)
+                                                const next = Number.isFinite(current) ? current + 1 : 1
+                                                return String(Math.min(checkoutMaxQty, next))
+                                            })}
                                                 className="w-10 h-10 rounded-xl bg-white/8 border border-white/10 text-white font-bold hover:bg-white/15 transition-all">+</button>
                                         </div>
                                         <p className="text-xs text-slate-600 mt-1.5">{checkoutMed.stock_quantity} units available</p>
@@ -610,8 +753,49 @@ export default function MedicineSearch() {
                                                         {rxScanSummary && (
                                                             <p className="text-[11px] text-emerald-400 mt-1">OCR: {rxScanSummary}</p>
                                                         )}
+                                                        {storedPrescriptionValidUntil && (
+                                                            <p className="text-[11px] text-indigo-300 mt-1">Stored prescription valid until: {storedPrescriptionValidUntil}</p>
+                                                        )}
+                                                        {rxScanMatches.length > 0 && (
+                                                            <div className="mt-2 space-y-1">
+                                                                <p className="text-[11px] text-slate-400">From inventory:</p>
+                                                                {rxScanMatches.map(item => (
+                                                                    <p key={`${item.id}-${item.name}-${item.dosage}`} className="text-[11px] text-slate-300">
+                                                                        • {item.name}{item.dosage ? ` (${item.dosage})` : ''} · Qty {item.quantity || 1} {item.available ? '— In Stock' : '— Not Available'}
+                                                                    </p>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        {rxScanUnavailable.length > 0 && (
+                                                            <div className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2.5 py-2">
+                                                                <p className="text-[11px] text-amber-300">Unavailable now, arranging shortly{rxScanEta ? ` (${rxScanEta})` : ''}:</p>
+                                                                {rxScanUnavailable.map(item => {
+                                                                    const key = `${item?.extracted_name || ''}-${item?.dosage || ''}`
+                                                                    const done = notifyRequestDone.includes(key)
+                                                                    const loading = notifyRequestLoading === key
+                                                                    return (
+                                                                        <div key={`na-${key}`} className="mt-1.5 flex items-center justify-between gap-2">
+                                                                            <p className="text-[11px] text-amber-100/90">
+                                                                                • {item.extracted_name}{item.dosage ? ` (${item.dosage})` : ''} · Qty {item.quantity || 1}
+                                                                            </p>
+                                                                            <button
+                                                                                type="button"
+                                                                                disabled={done || loading}
+                                                                                onClick={() => requestAvailabilityNotification(item)}
+                                                                                className="text-[10px] px-2 py-1 rounded-md border border-amber-300/25 bg-amber-200/10 text-amber-100 hover:bg-amber-200/20 transition-all disabled:opacity-60"
+                                                                            >
+                                                                                {loading ? 'Saving…' : done ? 'Requested ✓' : 'Notify me'}
+                                                                            </button>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        )}
                                                         {rxScanError && (
                                                             <p className="text-[11px] text-red-400 mt-1">{rxScanError}</p>
+                                                        )}
+                                                        {rxPatientWarning && (
+                                                            <p className="text-[11px] text-amber-300 mt-1">⚠️ {rxPatientWarning}</p>
                                                         )}
                                                     </div>
                                                 </div>
@@ -646,7 +830,7 @@ export default function MedicineSearch() {
 
                                     <div className="flex items-center justify-between py-3 border-t border-white/8">
                                         <span className="text-slate-400 text-sm">Estimated Total</span>
-                                        <span className="text-white font-black text-xl">₹{(parseFloat(checkoutMed.price) * quantity).toFixed(2)}</span>
+                                        <span className="text-white font-black text-xl">₹{(parseFloat(checkoutMed.price) * checkoutQtyForTotal).toFixed(2)}</span>
                                     </div>
 
                                     {checkoutError && (
@@ -714,15 +898,14 @@ export default function MedicineSearch() {
                                 <button onClick={placeOrder}
                                     disabled={
                                         checkoutState === 'processing' ||
-                                        quantity < 1 ||
-                                        quantity > parseInt(checkoutMed.stock_quantity) ||
+                                        !checkoutQtyValid ||
                                         (isRx(checkoutMed) && !hasRx)
                                     }
                                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                     style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)', boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
                                     {checkoutState === 'processing'
                                         ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
-                                        : <><CreditCard className="w-4 h-4" /> Pay ₹{(parseFloat(checkoutMed.price) * quantity).toFixed(2)}</>}
+                                        : <><CreditCard className="w-4 h-4" /> Pay ₹{(parseFloat(checkoutMed.price) * checkoutQtyForTotal).toFixed(2)}</>}
                                 </button>
                             )}
                         </div>
