@@ -1,7 +1,14 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from models import PharmacistLogin
-from database import get_all_orders, load_medicines, update_order_status
+from database import (
+    get_all_orders,
+    load_medicines,
+    update_order_status,
+    add_medicine,
+    DataValidationError,
+    DatabaseError,
+)
 from agents.notification_agent import NotificationAgent
 from datetime import date
 import os, io
@@ -185,6 +192,24 @@ def get_inventory():
         "message": "Inventory retrieved successfully",
         "error_code": None
     }
+
+
+@router.post("/inventory")
+def add_inventory_item(body: dict):
+    try:
+        medicine = add_medicine(body)
+        return {
+            "status": "success",
+            "data": {
+                "medicine": medicine,
+            },
+            "message": "Medicine added successfully",
+            "error_code": None,
+        }
+    except DataValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add medicine: {str(e)}")
 
 
 @router.post("/generate-po")

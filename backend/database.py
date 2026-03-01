@@ -358,6 +358,116 @@ def get_medicine_by_id(medicine_id: str) -> Optional[Dict]:
         return None
 
 
+def add_medicine(medicine_data: Dict) -> Dict:
+    """
+    Add a new medicine to inventory.
+
+    Args:
+        medicine_data: Medicine payload
+
+    Returns:
+        Persisted medicine record
+
+    Raises:
+        DataValidationError: If payload is invalid
+        DatabaseError: If persistence fails
+    """
+    global _medicines_cache, _medicines_cache_time
+
+    required_fields = [
+        "name",
+        "generic_name",
+        "category",
+        "stock_quantity",
+        "unit",
+        "price",
+        "prescription_required",
+        "min_stock_level",
+        "supplier",
+    ]
+
+    if not isinstance(medicine_data, dict):
+        raise DataValidationError("Medicine payload must be an object")
+
+    missing = [field for field in required_fields if field not in medicine_data]
+    if missing:
+        raise DataValidationError(f"Missing required fields: {', '.join(missing)}")
+
+    with _medicine_cache_lock:
+        try:
+            medicines = load_medicines()
+
+            incoming_id = str(medicine_data.get("id", "")).strip()
+            if incoming_id and any(str(m.get("id")) == incoming_id for m in medicines):
+                raise DataValidationError(f"Medicine id '{incoming_id}' already exists")
+
+            if incoming_id:
+                medicine_id = incoming_id
+            else:
+                numeric_ids = []
+                for med in medicines:
+                    value = str(med.get("id", "")).strip()
+                    if value.isdigit():
+                        numeric_ids.append(int(value))
+                medicine_id = str(max(numeric_ids) + 1) if numeric_ids else "1000001"
+
+            try:
+                stock_quantity = int(medicine_data.get("stock_quantity", 0))
+                min_stock_level = int(medicine_data.get("min_stock_level", 0))
+                price = float(medicine_data.get("price", 0))
+            except (TypeError, ValueError):
+                raise DataValidationError("stock_quantity, min_stock_level, and price must be numeric")
+
+            if stock_quantity < 0:
+                raise DataValidationError("stock_quantity cannot be negative")
+            if min_stock_level < 0:
+                raise DataValidationError("min_stock_level cannot be negative")
+            if price <= 0:
+                raise DataValidationError("price must be greater than 0")
+
+            prescription_required = medicine_data.get("prescription_required")
+            if isinstance(prescription_required, str):
+                prescription_required = prescription_required.strip().lower() == "true"
+            else:
+                prescription_required = bool(prescription_required)
+
+            new_medicine = {
+                "id": medicine_id,
+                "name": str(medicine_data.get("name", "")).strip(),
+                "generic_name": str(medicine_data.get("generic_name", "")).strip(),
+                "category": str(medicine_data.get("category", "")).strip(),
+                "stock_quantity": stock_quantity,
+                "unit": str(medicine_data.get("unit", "")).strip(),
+                "price": price,
+                "prescription_required": prescription_required,
+                "min_stock_level": min_stock_level,
+                "supplier": str(medicine_data.get("supplier", "")).strip(),
+            }
+
+            empty_fields = [
+                field for field in ["name", "generic_name", "category", "unit", "supplier"]
+                if not new_medicine[field]
+            ]
+            if empty_fields:
+                raise DataValidationError(f"Empty required fields: {', '.join(empty_fields)}")
+
+            medicines.append(new_medicine)
+            fieldnames = list(medicines[0].keys()) if medicines else list(new_medicine.keys())
+            filepath = os.path.join(DATA_DIR, "medicines.csv")
+            _safe_write_csv(filepath, medicines, fieldnames)
+
+            _medicines_cache = medicines
+            _medicines_cache_time = time.time()
+
+            logger.info(f"Medicine added: {medicine_id} - {new_medicine['name']}")
+            return new_medicine
+        except (DataValidationError, DatabaseError):
+            raise
+        except Exception as e:
+            logger.error(f"Error adding medicine: {e}")
+            raise DatabaseError(f"Failed to add medicine: {str(e)}")
+
+
 def get_patient_orders(patient_id: str = None, abha_id: str = None, force_refresh: bool = False) -> List[Dict]:
     """
     Get orders for a patient.

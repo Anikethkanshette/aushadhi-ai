@@ -3,7 +3,7 @@ import api from '../../api'
 import { API_ENDPOINTS } from '../../config'
 import {
     AlertTriangle, PackageSearch, Loader2, FileText, X, Search,
-    TrendingDown, Package, CheckCircle, Bot, Send, Zap, RefreshCw
+    TrendingDown, Package, CheckCircle, Bot, Send, Zap, RefreshCw, PlusCircle
 } from 'lucide-react'
 
 export default function InventoryManager() {
@@ -15,6 +15,21 @@ export default function InventoryManager() {
     const [poDraft, setPoDraft] = useState('')
     const [generating, setGenerating] = useState(false)
     const [alertsCreated, setAlertsCreated] = useState(null)
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [adding, setAdding] = useState(false)
+    const [addError, setAddError] = useState('')
+    const [addSuccess, setAddSuccess] = useState('')
+    const [newMedicine, setNewMedicine] = useState({
+        name: '',
+        generic_name: '',
+        category: 'General',
+        stock_quantity: 0,
+        unit: 'tablets',
+        price: '',
+        prescription_required: false,
+        min_stock_level: 10,
+        supplier: '',
+    })
 
     useEffect(() => {
         const fetchMeds = async () => {
@@ -66,6 +81,53 @@ export default function InventoryManager() {
         return Math.min(pct, 100)
     }
 
+    const updateNewMedicineField = (field, value) => {
+        setNewMedicine(prev => ({ ...prev, [field]: value }))
+    }
+
+    const resetNewMedicine = () => {
+        setNewMedicine({
+            name: '',
+            generic_name: '',
+            category: 'General',
+            stock_quantity: 0,
+            unit: 'tablets',
+            price: '',
+            prescription_required: false,
+            min_stock_level: 10,
+            supplier: '',
+        })
+        setAddError('')
+    }
+
+    const handleAddMedicine = async (e) => {
+        e.preventDefault()
+        setAddError('')
+        setAddSuccess('')
+        setAdding(true)
+        try {
+            const payload = {
+                ...newMedicine,
+                stock_quantity: Number(newMedicine.stock_quantity),
+                min_stock_level: Number(newMedicine.min_stock_level),
+                price: Number(newMedicine.price),
+                prescription_required: Boolean(newMedicine.prescription_required),
+            }
+            const res = await api.post(API_ENDPOINTS.PHARMACIST_ADD_MEDICINE, payload)
+            const created = res.data?.medicine
+            if (created) {
+                setMedicines(prev => [created, ...prev])
+            }
+            setAddSuccess('Tablet added to inventory.')
+            resetNewMedicine()
+            setShowAddModal(false)
+        } catch (err) {
+            setAddError(err?.message || 'Failed to add tablet. Please try again.')
+        } finally {
+            setAdding(false)
+        }
+    }
+
     if (loading) return (
         <div className="flex items-center justify-center h-64">
             <Loader2 className="w-8 h-8 animate-spin text-teal-400" />
@@ -87,7 +149,19 @@ export default function InventoryManager() {
                     style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 4px 20px rgba(99,102,241,0.35)' }}>
                     <Bot className="w-4 h-4" /> AI Restock PO
                 </button>
+                <button
+                    onClick={() => { setShowAddModal(true); setAddError('') }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all"
+                >
+                    <PlusCircle className="w-4 h-4" /> Add New Tablet
+                </button>
             </div>
+
+            {addSuccess && (
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 px-4 py-2 text-sm">
+                    {addSuccess}
+                </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3">
                 <button
@@ -219,6 +293,60 @@ export default function InventoryManager() {
                                 </button>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Add Tablet Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="glass-card border border-emerald-500/20 w-full max-w-2xl animate-slide-up">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+                            <h3 className="font-bold text-white flex items-center gap-2">
+                                <PlusCircle className="w-5 h-5 text-emerald-400" /> Add New Tablet
+                            </h3>
+                            <button onClick={() => { setShowAddModal(false); resetNewMedicine() }} className="text-slate-500 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddMedicine} className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <input required type="text" value={newMedicine.name} onChange={(e) => updateNewMedicineField('name', e.target.value)} placeholder="Tablet name" className="input-field text-sm" />
+                                <input required type="text" value={newMedicine.generic_name} onChange={(e) => updateNewMedicineField('generic_name', e.target.value)} placeholder="Generic name" className="input-field text-sm" />
+                                <input required type="text" value={newMedicine.category} onChange={(e) => updateNewMedicineField('category', e.target.value)} placeholder="Category" className="input-field text-sm" />
+                                <input required type="text" value={newMedicine.supplier} onChange={(e) => updateNewMedicineField('supplier', e.target.value)} placeholder="Supplier" className="input-field text-sm" />
+                                <input required min="0" type="number" value={newMedicine.stock_quantity} onChange={(e) => updateNewMedicineField('stock_quantity', e.target.value)} placeholder="Stock quantity" className="input-field text-sm" />
+                                <input required min="0" type="number" value={newMedicine.min_stock_level} onChange={(e) => updateNewMedicineField('min_stock_level', e.target.value)} placeholder="Min stock level" className="input-field text-sm" />
+                                <input required min="0.01" step="0.01" type="number" value={newMedicine.price} onChange={(e) => updateNewMedicineField('price', e.target.value)} placeholder="Price" className="input-field text-sm" />
+                                <input required type="text" value={newMedicine.unit} onChange={(e) => updateNewMedicineField('unit', e.target.value)} placeholder="Unit (e.g. tablets)" className="input-field text-sm" />
+                            </div>
+
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                                <input
+                                    type="checkbox"
+                                    checked={newMedicine.prescription_required}
+                                    onChange={(e) => updateNewMedicineField('prescription_required', e.target.checked)}
+                                />
+                                Prescription required
+                            </label>
+
+                            {addError && (
+                                <div className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 px-3 py-2 text-sm">
+                                    {addError}
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button type="button" onClick={() => { setShowAddModal(false); resetNewMedicine() }} className="btn-secondary text-sm">
+                                    Cancel
+                                </button>
+                                <button type="submit" disabled={adding} className="flex items-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm text-white bg-emerald-600 hover:bg-emerald-500 transition-all disabled:opacity-60">
+                                    {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <PlusCircle className="w-4 h-4" />}
+                                    {adding ? 'Adding...' : 'Add Tablet'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

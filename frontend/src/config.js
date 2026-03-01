@@ -56,6 +56,7 @@ export const API_ENDPOINTS = {
   PHARMACIST_ORDERS: '/pharmacist/orders',
   PHARMACIST_ORDERS_BULK_STATUS: '/pharmacist/orders/bulk-status',
   PHARMACIST_INVENTORY: '/pharmacist/inventory',
+  PHARMACIST_ADD_MEDICINE: '/pharmacist/inventory',
   PHARMACIST_NOTIFICATIONS: '/pharmacist/patient-notifications',
   
   // Webhooks
