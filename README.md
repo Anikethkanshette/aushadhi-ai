@@ -46,31 +46,38 @@ AushadhiAI was built and evolved as a **HackFusion 3.0 project** with a focus on
 
 ---
 
-## Features
+## ✨ Features
 
-| Feature | Description |
-|---|---|
-| 🆔 ABHA Login | Simulated ABDM-compatible identity (12-digit ABHA ID) |
-| 👨‍⚕️ Pharmacist Portal | Admin dashboard with secure login, inventory management, real-time order fulfilling, and **Patient Notification System** |
-| 🎨 Luxury UI | Complete premium frontend redesign with Oceanic Obsidian palette, glassmorphism, and smooth animations |
-| 🎙️ Voice Chat | Web Speech API – speak in English or Hindi |
-| 🔊 Text-to-Speech | AI responds in voice using Speech Synthesis |
-| 🤖 Agentic Router | Main AI routes queries to specialized `PolicyAgent` or `PharmacyAgent` |
-| 🧠 Intelligent Dashboard Chat | Dedicated patient dashboard context (no patient-id prompts in chat) |
-| 💬 Guided Conversational Actions | AI asks follow-up prompts: *Yes/No → Quantity/IDs → Execute* |
-| 📢 Notification Agent | AI automatically drafts context-aware WhatsApp/SMS/Email copy upon order fulfillment, plus manual pharmacist-to-patient direct messaging with AI enhancement |
-| 🔔 In-App Alerts | Real-time notification bell in Patient Dashboard pulling from pharmacist messages |
-| 💊 Medicine Search | 49 real pharmaceutical products with stock, pricing & Rx flags |
-| 📋 Prescription Validation | Detects prescription-required drugs (Ramipril, Minoxidil, etc.) |
-| 🛒 Order Flow | Simulated orders with payment + notifications |
-| 🤖 AI Order Placement | Patients can place medicine orders directly through chat ("order 2 paracetamol") |
-| 🔁 Chat-Driven Dashboard Control | Order history, order status, cancellation, notifications, auto-refill list/cancel from chat |
-| 📊 Welfare Eligibility | PMJAY scheme detection and discounts |
-| 🔁 Predictive Refill AI | Agentic AI calculates consumption from history to predict exactly when you will run out of chronic meds |
-| 📸 AI Prescription OCR | Gemini Vision automatically extracts handwritten medicines and dosages from uploaded Rx photos directly into your cart |
-| 📦 Smart Restock AI | Pharmacist AI automates inventory by analyzing low stock to draft customized Purchase Orders to distributors |
-| 📈 Langfuse Tracing | End-to-end agent observability (spans, tool execution, intents, and traces) |
-| 💾 IndexedDB | Offline-first data storage with Dexie |
+> AushadhiAI combines a **patient-first conversational experience** with **pharmacist-grade operational intelligence**.
+
+### 👤 Patient Experience
+- 🆔 **ABHA Login** — Simulated ABDM-compatible identity using 12-digit ABHA IDs
+- 🎙️ **Voice + Multilingual Chat** — Speak naturally in English/Hindi using Web Speech API
+- 🔊 **Voice Responses** — Speech Synthesis delivers AI replies as natural audio
+- 🧠 **Intelligent Dashboard Chat** — Patient context is preserved (no repeated patient-ID prompts)
+- 💬 **Guided Conversational Actions** — AI follows a clear flow: *Yes/No → Quantity/IDs → Execute*
+- 🤖 **AI Order Placement** — Place orders directly in chat (e.g., “order 2 paracetamol”)
+- 🔁 **Chat-Driven Self-Service** — Order history, order status, cancellation, notifications, auto-refill controls
+- 🔔 **In-App Alerts** — Real-time patient notification bell for pharmacist communications
+
+### 💊 Pharmacy & Operations
+- 👨‍⚕️ **Pharmacist Portal** — Secure login, order queue, inventory management, and notification workflows
+- 💊 **Medicine Search Engine** — 49 real pharmaceutical products with stock, pricing, and Rx flags
+- 📋 **Prescription Validation** — Detects prescription-required medicines (e.g., Ramipril, Minoxidil)
+- 🛒 **Order Lifecycle Flow** — Simulated ordering, payment state handling, and dispatch notifications
+- 📢 **Notification Agent** — AI-generated WhatsApp/SMS/Email drafts + manual pharmacist-to-patient messaging
+- 📦 **Smart Restock AI** — Generates distributor-ready purchase orders from low-stock analysis
+
+### 🤖 AI Intelligence Layer
+- 🤖 **Agentic Router** — Routes user intent to specialized agents such as `PolicyAgent` and `PharmacyAgent`
+- 📸 **Gemini Vision OCR** — Extracts medicines and dosage details from uploaded prescription photos
+- 🔁 **Predictive Refill AI** — Estimates chronic medicine depletion timelines from patient order history
+- 📊 **Welfare Eligibility Intelligence** — PMJAY detection and discount insights
+
+### 🧱 Reliability & Engineering
+- 📈 **Langfuse Tracing** — End-to-end observability across spans, tool calls, intents, and traces
+- 💾 **Offline-First Storage** — IndexedDB (Dexie) for resilient local persistence
+- 🎨 **Premium Frontend UX** — Oceanic Obsidian visual system, glassmorphism, and smooth interactions
 
 ---
 
@@ -94,22 +101,30 @@ And the same guided style is available for dashboard operations:
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
-```
-Frontend (React + Vite + TailwindCSS)
-   ↕ REST API (axios)
-Backend (FastAPI, Python)
-   ↕ Agent Router
+### System Flow
+
+```text
+Patient / Pharmacist UI (React + Vite + TailwindCSS)
+            ↓ REST API (axios)
+Backend Service Layer (FastAPI, Python)
+            ↓ Agent Router
 AI Agent Layer (Google Gemini Native Function Calling)
-   ├── PharmacyAgent (Medicines, Tools, Inventory)
-   ├── PolicyAgent (Regulation, Returns, Rules)
-   └── NotificationAgent (WhatsApp/SMS Copy Generation)
-   ↕ Tracing
-Langfuse (Observability)
-   ↕ Local Storage
-Local IndexedDB (Dexie) & local JSON files
+   ├── PharmacyAgent      → medicines, stock checks, ordering tools
+   ├── PolicyAgent        → compliance, returns, policy guidance
+   └── NotificationAgent  → WhatsApp/SMS/Email communication drafting
+            ↓ Tracing
+Langfuse Observability (spans, intents, tool execution traces)
+            ↓ Persistence
+IndexedDB (Dexie) + local CSV/JSON datasets
 ```
+
+### Why this architecture works
+- **Separation of concerns** keeps UI, API, business logic, and AI orchestration independently maintainable.
+- **Agent specialization** improves response quality by routing each query to the right capability layer.
+- **Traceability by design** via Langfuse helps debug intent, tool calls, and failures quickly.
+- **Offline resilience** from local-first data storage keeps demo flows stable under network issues.
 
 ---
 
@@ -132,31 +147,37 @@ Local IndexedDB (Dexie) & local JSON files
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Clone & Configure
+### Prerequisites
+- Python **3.11+**
+- Node.js **18+** and npm
+
+### 1) Clone & Environment Setup
 
 ```bash
 git clone https://github.com/Anikethkanshette/aushadhi-ai.git
 cd aushadhi-ai
 cp .env.example .env
-# Edit .env — add GEMINI_API_KEY (optional, fallback mode works without it)
 ```
 
-### 2. Backend
+Edit `.env` and add `GEMINI_API_KEY` (optional). If omitted, the app runs in fallback mode.
+
+### 2) Start Backend (FastAPI)
 
 ```bash
 cd backend
 python -m venv venv
 venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
+# source venv/bin/activate    # macOS/Linux
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-Swagger docs → **http://localhost:8000/docs**
+- API base: **http://localhost:8000**
+- Swagger docs: **http://localhost:8000/docs**
 
-### 3. Frontend
+### 3) Start Frontend (React + Vite)
 
 ```bash
 cd frontend
@@ -164,7 +185,11 @@ npm install
 npm run dev
 ```
 
-App → **http://localhost:5173**
+- App URL: **http://localhost:5173**
+
+### 4) Demo-Ready Check
+- Patient login via ABHA ID and begin chat-assisted medicine ordering.
+- Pharmacist login to validate inventory, order queue, and notifications.
 
 ---
 
@@ -185,28 +210,47 @@ App → **http://localhost:5173**
 
 ---
 
-## API Reference
+## 🔌 API Reference
 
-| Method | Endpoint | Description |
+### Core Patient APIs
+
+| Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/agent/chat` | AI pharmacist chat for ordering + guided dashboard actions (history/status/cancel/notifications/auto-refill) |
-| `GET` | `/medicines/` | List / search products |
-| `GET` | `/medicines/?search=ramipril` | Search by name or generic |
-| `POST` | `/orders/` | Place an order |
-| `GET` | `/orders/?abha_id=...` | Patient order history |
-| `POST` | `/patients/login` | ABHA login |
-| `GET` | `/patients/refill-alerts` | Upcoming refill alerts |
-| `GET` | `/patients/{abha}/notifications` | Fetch unread in-app alerts |
-| `GET` | `/patients/{abha}/insights` | AI-generated Predictive Refill insights from order history |
-| `GET` | `/agent/welfare/{abha_id}` | PMJAY eligibility check |
-| `POST` | `/agent/scan-prescription` | Gemini Vision OCR to extract medicines from images |
-| `POST` | `/pharmacist/login` | Secure pharmacist auth |
-| `GET` | `/pharmacist/stats` | Order and revenue totals |
-| `PUT` | `/pharmacist/orders/{id}/status` | Fulfill orders -> triggers Notification Agent |
-| `GET` | `/pharmacist/inventory` | Real-time stock levels |
-| `POST` | `/pharmacist/generate-po` | AI drafts Purchase Order for low-stock inventory |
-| `POST` | `/webhook/fulfillment` | External fulfillment webhook updates order status and dispatches patient notification |
-| `POST` | `/webhook/notification` | External notification webhook for WhatsApp/SMS/Email simulation |
+| `POST` | `/patients/login` | ABHA-based patient authentication |
+| `GET` | `/medicines/` | List or browse medicine catalog |
+| `GET` | `/medicines/?search=ramipril` | Search medicines by name or generic |
+| `POST` | `/orders/` | Create a new medicine order |
+| `GET` | `/orders/?abha_id=...` | Fetch patient order history |
+| `GET` | `/patients/refill-alerts` | Upcoming refill reminders |
+| `GET` | `/patients/{abha}/notifications` | Retrieve unread patient notifications |
+| `GET` | `/patients/{abha}/insights` | Predictive refill insights from order patterns |
+
+### Agent & Intelligence APIs
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/agent/chat` | Conversational AI pharmacist with guided actions |
+| `GET` | `/agent/welfare/{abha_id}` | PMJAY eligibility and benefit guidance |
+| `POST` | `/agent/scan-prescription` | Gemini Vision OCR for prescription extraction |
+
+### Pharmacist Operations APIs
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/pharmacist/login` | Pharmacist authentication |
+| `GET` | `/pharmacist/stats` | Revenue, order, and performance stats |
+| `GET` | `/pharmacist/inventory` | Live inventory visibility |
+| `PUT` | `/pharmacist/orders/{id}/status` | Update order status and trigger notifications |
+| `POST` | `/pharmacist/generate-po` | Generate AI-assisted purchase orders for restocking |
+
+### Integration Webhooks
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `POST` | `/webhook/fulfillment` | Receive fulfillment updates and sync order states |
+| `POST` | `/webhook/notification` | Simulate external WhatsApp/SMS/Email events |
+
+> Tip: Explore and test all endpoints via Swagger at **http://localhost:8000/docs**.
 
 ---
 
@@ -222,38 +266,48 @@ App → **http://localhost:5173**
 
 ---
 
-## Project Structure
+## 🗂️ Project Structure
 
-```
+```text
 aushadhi-ai/
 ├── backend/
-│   ├── agents/
-│   │   ├── pharmacy_agent.py      # Main router + Google GenAI tools
-│   │   ├── policy_agent.py        # Rules & Regulations solver
-│   │   ├── notification_agent.py  # Automated comms generator
-│   │   └── predictive_agent.py    # Refill prediction from history
-│   ├── routes/
+│   ├── agents/                    # Agentic intelligence layer
+│   │   ├── pharmacy_agent.py      # Medicine tools + ordering orchestration
+│   │   ├── policy_agent.py        # Policy, returns, compliance responses
+│   │   ├── notification_agent.py  # Patient communication drafting
+│   │   └── predictive_agent.py    # Refill prediction from order behavior
+│   ├── routes/                    # FastAPI endpoint modules
 │   │   ├── medicines.py / orders.py / patients.py
 │   │   ├── agent.py / webhooks.py / pharmacist.py
-│   ├── data/
-│   │   ├── medicines.csv        # 49 real pharmaceutical products
-│   │   ├── order_history.csv    # Real consumer order history
-│   │   └── notifications.json   # Persistent in-app alerts
-│   ├── main.py / models.py / database.py
+│   ├── data/                      # Demo datasets and persisted runtime artifacts
+│   │   ├── medicines.csv          # 49 medicine catalog records
+│   │   ├── order_history.csv      # Historical patient order patterns
+│   │   └── notifications.json     # In-app notification store
+│   ├── main.py                    # FastAPI app entrypoint
+│   ├── models.py                  # Pydantic/domain models
+│   ├── database.py                # Data access and persistence logic
 │   └── requirements.txt
-├── frontend/src/
-│   ├── pages/
-│   │   ├── AbhaLogin.jsx        # ABHA ID login
-│   │   ├── Dashboard.jsx        # Responsive shell + Patient bell
-│   │   ├── DashboardHome.jsx    # Stats, welfare, refill alerts
-│   │   ├── ChatPage.jsx         # Voice + text AI chat
-│   │   ├── MedicineSearch.jsx   # Product search + order flow
-│   │   ├── OrderHistory.jsx     # Order history + total spend
-│   │   └── pharmacist/          # Admin Dashboard, Queue, Inventory
-│   ├── App.jsx / db.js / index.css
+├── frontend/
+│   └── src/
+│       ├── pages/
+│       │   ├── AbhaLogin.jsx      # ABHA login interface
+│       │   ├── Dashboard.jsx      # Main patient shell and navigation
+│       │   ├── DashboardHome.jsx  # Insights, welfare, refill alerts
+│       │   ├── ChatPage.jsx       # Voice + text AI assistant
+│       │   ├── MedicineSearch.jsx # Product discovery and ordering
+│       │   ├── OrderHistory.jsx   # Patient order timeline and totals
+│       │   └── pharmacist/        # Pharmacist portal modules
+│       ├── App.jsx
+│       ├── db.js                  # IndexedDB (Dexie) setup
+│       └── index.css
 ├── .env.example
 └── README.md
 ```
+
+### Repository design goals
+- **Modular backend routes** make features easy to evolve independently.
+- **Agent-first architecture** keeps conversational intelligence extensible.
+- **Data + UI separation** simplifies debugging, demos, and feature additions.
 
 ---
 
