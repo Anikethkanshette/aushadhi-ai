@@ -331,6 +331,8 @@ aushadhi-ai/
 - All payments, notifications, and welfare checks are **simulated demos**
 - ABHA identity is **simulated** — no real ABDM API connection
 
+
 ---
+
 
 *Built with ❤️ for the Agent Pharmacist Hackathon*
