@@ -335,4 +335,4 @@ aushadhi-ai/
 ---
 
 
-*Built with ❤️ for the Agent Pharmacist Hackathon*
+*Built with ❤️ for the Agentic pharmacy in Hackathon 
