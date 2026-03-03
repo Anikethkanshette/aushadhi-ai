@@ -328,9 +328,6 @@ aushadhi-ai/
 
 - Works **offline** — falls back to IndexedDB when backend is unavailable
 - AI agent degrades gracefully without an API key (rule-based fallback)
-- All payments, notifications, and welfare checks are **simulated demos**
-- ABHA identity is **simulated** — no real ABDM API connection
-
 ---
 
-*Built with ❤️ for the Agent Pharmacist Hackathon*
+*Built with ❤️ for the Agent Pharmacist Hackathon
