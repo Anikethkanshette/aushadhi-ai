@@ -330,4 +330,6 @@ aushadhi-ai/
 - AI agent degrades gracefully without an API key (rule-based fallback)
 ---
 
-*Built with ❤️ for the Agent Pharmacist Hackathon
+
+
+ *Built with ❤️ for the Agentic pharmacy in Hackfusion 
