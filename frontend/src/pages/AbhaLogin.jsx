@@ -32,16 +32,46 @@ export default function AbhaLogin() {
 
     const handleLogin = async (e) => {
         e?.preventDefault()
-        if (!abhaId || !password) { setError('Please enter ABHA ID and password'); return }
-        setLoading(true); setError('')
+        const normalizedAbhaId = abhaId.trim()
+        if (!normalizedAbhaId || !password) { setError('Please enter ABHA ID and password'); return }
+        setLoading(true)
+        setError('')
+
         try {
-            const res = await api.post(API_ENDPOINTS.AUTH_LOGIN, { abha_id: abhaId.trim(), password })
-            setPatient(res.data.patient)
-            localStorage.setItem('aushadhi_patient', JSON.stringify(res.data.patient))
+            const res = await api.post(API_ENDPOINTS.AUTH_LOGIN, { abha_id: normalizedAbhaId, password })
+            const patientData = res.data?.patient
+            if (!patientData) throw new Error('The login service returned an invalid patient profile.')
+            const patient = { ...patientData, id: patientData.id || patientData.patient_id }
+
+            setPatient(patient)
+            localStorage.setItem('aushadhi_patient', JSON.stringify(patient))
+            localStorage.removeItem('aushadhi_demo_mode')
             navigate('/dashboard')
         } catch (err) {
-            setError(err.message || 'Login failed. Check your credentials.')
-        } finally { setLoading(false) }
+            const demoPatient = DEMO_PATIENTS.find(
+                (candidate) => candidate.abha === normalizedAbhaId && candidate.password === password
+            )
+            const backendUnavailable = err.code === 'NETWORK_ERROR' || err.code === 'TIMEOUT'
+
+            if (demoPatient && backendUnavailable) {
+                const patient = {
+                    patient_id: demoPatient.abha,
+                    id: demoPatient.abha,
+                    abha_id: demoPatient.abha,
+                    name: demoPatient.name,
+                    age: demoPatient.age,
+                    chronic_conditions: demoPatient.cond.split(', '),
+                }
+                setPatient(patient)
+                localStorage.setItem('aushadhi_patient', JSON.stringify(patient))
+                localStorage.setItem('aushadhi_demo_mode', 'true')
+                navigate('/dashboard')
+            } else {
+                setError(err.message || 'Login failed. Check your credentials.')
+            }
+        } finally {
+            setLoading(false)
+        }
     }
 
     const fill = (p) => { setAbhaId(p.abha); setPassword(p.password); setError('') }
