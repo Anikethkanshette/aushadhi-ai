@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ShieldCheck, Mic, Sparkles, Heart, Loader2, ArrowRight } from 'lucide-react'
 import api from '../api'
-import { API_ENDPOINTS } from '../config'
+import { API_CONFIG, API_ENDPOINTS } from '../config'
 import { useAppContext } from '../context/AppContext'
 
 const DEMO_PATIENTS = [
@@ -19,6 +19,15 @@ const FEATURES = [
     { icon: Heart, label: 'Health History', sub: 'Full medical profile' },
     { icon: ShieldCheck, label: 'ABHA Secure', sub: '20% PMJAY discount' },
 ]
+
+const createDemoPatient = (demoPatient) => ({
+    patient_id: demoPatient.abha,
+    id: demoPatient.abha,
+    abha_id: demoPatient.abha,
+    name: demoPatient.name,
+    age: demoPatient.age,
+    chronic_conditions: demoPatient.cond.split(', '),
+})
 
 export default function AbhaLogin() {
     const navigate = useNavigate()
@@ -37,6 +46,26 @@ export default function AbhaLogin() {
         setLoading(true)
         setError('')
 
+        const demoPatient = DEMO_PATIENTS.find(
+            (candidate) => candidate.abha === normalizedAbhaId && candidate.password === password
+        )
+
+        if (!API_CONFIG.BACKEND_ENABLED) {
+            if (!demoPatient) {
+                setError('Use one of the listed demo accounts, or configure the pharmacy API to sign in with another account.')
+                setLoading(false)
+                return
+            }
+
+            const patient = createDemoPatient(demoPatient)
+            setPatient(patient)
+            localStorage.setItem('aushadhi_patient', JSON.stringify(patient))
+            localStorage.setItem('aushadhi_demo_mode', 'true')
+            setLoading(false)
+            navigate('/dashboard')
+            return
+        }
+
         try {
             const res = await api.post(API_ENDPOINTS.AUTH_LOGIN, { abha_id: normalizedAbhaId, password })
             const patientData = res.data?.patient
@@ -48,20 +77,10 @@ export default function AbhaLogin() {
             localStorage.removeItem('aushadhi_demo_mode')
             navigate('/dashboard')
         } catch (err) {
-            const demoPatient = DEMO_PATIENTS.find(
-                (candidate) => candidate.abha === normalizedAbhaId && candidate.password === password
-            )
             const backendUnavailable = err.code === 'NETWORK_ERROR' || err.code === 'TIMEOUT'
 
             if (demoPatient && backendUnavailable) {
-                const patient = {
-                    patient_id: demoPatient.abha,
-                    id: demoPatient.abha,
-                    abha_id: demoPatient.abha,
-                    name: demoPatient.name,
-                    age: demoPatient.age,
-                    chronic_conditions: demoPatient.cond.split(', '),
-                }
+                const patient = createDemoPatient(demoPatient)
                 setPatient(patient)
                 localStorage.setItem('aushadhi_patient', JSON.stringify(patient))
                 localStorage.setItem('aushadhi_demo_mode', 'true')

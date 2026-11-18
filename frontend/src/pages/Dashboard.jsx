@@ -27,6 +27,11 @@ export default function Dashboard() {
             return
         }
 
+        if (localStorage.getItem('aushadhi_demo_mode') === 'true') {
+            setProfile(patient)
+            return
+        }
+
         // Fetch patient profile
         api.get(`/patients/abha/${patient?.abha_id}/profile`)
             .then(r => setProfile(r.data))

@@ -6,6 +6,7 @@ import PharmacistLogin from './pages/pharmacist/PharmacistLogin'
 import PharmacistDashboard from './pages/pharmacist/PharmacistDashboard'
 import { seedMedicines, seedOrders, db } from './db'
 import api from './api'
+import { API_CONFIG } from './config'
 import ErrorBoundary from './components/ErrorBoundary'
 import { AppProvider, useAppContext } from './context/AppContext'
 
@@ -16,6 +17,8 @@ function AppRouter() {
     const { patient, pharmacist, clearAll } = useAppContext()
 
     useEffect(() => {
+        if (!API_CONFIG.BACKEND_ENABLED) return
+
         async function initDB() {
             try {
                 // Try to load data from backend and seed IndexedDB

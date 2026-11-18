@@ -75,6 +75,10 @@ export default function DashboardHome() {
 
     useEffect(() => {
         if (!patient?.patient_id) return
+        if (localStorage.getItem('aushadhi_demo_mode') === 'true') {
+            setLoadingMeds(false)
+            return
+        }
 
         const fetchMedicines = async () => {
             try {

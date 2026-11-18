@@ -6,6 +6,7 @@
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  BACKEND_ENABLED: Boolean(import.meta.env.VITE_API_BASE_URL),
   TIMEOUT: 30000, // 30 seconds
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000, // 1 second
